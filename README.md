@@ -36,7 +36,7 @@ LiteLLM /metrics  ──scrape──▶  LLM Pulse  ──JSON──▶  Homepag
 ```yaml
 services:
   llm-pulse:
-    build: .
+    image: ghcr.io/jakepenzak/llm-pulse:latest
     container_name: llm-pulse
     restart: unless-stopped
     environment:
