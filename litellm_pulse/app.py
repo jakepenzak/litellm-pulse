@@ -1,4 +1,4 @@
-"""LLM Pulse — a lightweight LiteLLM metrics exporter with SQLite time-series storage."""
+"""LiteLLM Pulse — a lightweight LiteLLM metrics exporter with SQLite time-series storage."""
 
 from __future__ import annotations
 
@@ -26,25 +26,25 @@ from .db import (
 )
 from .parser import parse_prometheus_text
 
-logger = logging.getLogger("llm-pulse")
+logger = logging.getLogger("litellm-pulse")
 
 # ---------------------------------------------------------------------------
-# Configuration (all env-var driven, prefixed with LLM_PULSE_)
+# Configuration (all env-var driven, prefixed with LITELLM_PULSE_)
 # ---------------------------------------------------------------------------
 
-METRICS_URL = os.environ.get("LLM_PULSE_METRICS_URL", "http://litellm:4000/metrics/")
-SCRAPE_INTERVAL = int(os.environ.get("LLM_PULSE_SCRAPE_INTERVAL", "60"))
-PORT = int(os.environ.get("LLM_PULSE_PORT", "8000"))
-HOST = os.environ.get("LLM_PULSE_HOST", "0.0.0.0")
-VERIFY_SSL = os.environ.get("LLM_PULSE_VERIFY_SSL", "false").lower() == "true"
-SCRAPE_TIMEOUT = float(os.environ.get("LLM_PULSE_SCRAPE_TIMEOUT", "30"))
-LOG_LEVEL = os.environ.get("LLM_PULSE_LOG_LEVEL", "info").upper()
-DB_PATH = os.environ.get("LLM_PULSE_DB_PATH", "./data/llm_pulse.db")
-DB_RETENTION_DAYS = int(os.environ.get("LLM_PULSE_DB_RETENTION_DAYS", "90"))
-HISTORY_SIZE = int(os.environ.get("LLM_PULSE_HISTORY_SIZE", "168"))
+METRICS_URL = os.environ.get("LITELLM_PULSE_METRICS_URL", "http://litellm:4000/metrics/")
+SCRAPE_INTERVAL = int(os.environ.get("LITELLM_PULSE_SCRAPE_INTERVAL", "60"))
+PORT = int(os.environ.get("LITELLM_PULSE_PORT", "8000"))
+HOST = os.environ.get("LITELLM_PULSE_HOST", "0.0.0.0")
+VERIFY_SSL = os.environ.get("LITELLM_PULSE_VERIFY_SSL", "false").lower() == "true"
+SCRAPE_TIMEOUT = float(os.environ.get("LITELLM_PULSE_SCRAPE_TIMEOUT", "30"))
+LOG_LEVEL = os.environ.get("LITELLM_PULSE_LOG_LEVEL", "info").upper()
+DB_PATH = os.environ.get("LITELLM_PULSE_DB_PATH", "./data/litellm_pulse.db")
+DB_RETENTION_DAYS = int(os.environ.get("LITELLM_PULSE_DB_RETENTION_DAYS", "90"))
+HISTORY_SIZE = int(os.environ.get("LITELLM_PULSE_HISTORY_SIZE", "168"))
 
 # Default metric mappings — LiteLLM Prometheus metric names.
-# Each can be overridden via env var LLM_PULSE_METRIC_<FRIENDLY_NAME>.
+# Each can be overridden via env var LITELLM_PULSE_METRIC_<FRIENDLY_NAME>.
 DEFAULT_METRIC_MAP = {
     "requests": "litellm_proxy_total_requests_metric_total",
     "failed_requests": "litellm_proxy_failed_requests_metric_total",
@@ -58,7 +58,7 @@ DEFAULT_METRIC_MAP = {
 
 METRIC_MAP: dict[str, str] = {}
 for _friendly, _prom in DEFAULT_METRIC_MAP.items():
-    METRIC_MAP[_friendly] = os.environ.get(f"LLM_PULSE_METRIC_{_friendly.upper()}", _prom)
+    METRIC_MAP[_friendly] = os.environ.get(f"LITELLM_PULSE_METRIC_{_friendly.upper()}", _prom)
 
 # ---------------------------------------------------------------------------
 # State
@@ -228,7 +228,7 @@ async def lifespan(_app: FastAPI):
     scrape_task = asyncio.create_task(_scraper_loop())
     purge_task = asyncio.create_task(_purge_loop())
     logger.info(
-        "LLM Pulse started — scraping %s every %ds, DB: %s",
+        "LiteLLM Pulse started — scraping %s every %ds, DB: %s",
         METRICS_URL,
         SCRAPE_INTERVAL,
         DB_PATH if _db else "disabled",
@@ -245,7 +245,7 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="LLM Pulse",
+    title="LiteLLM Pulse",
     description="A lightweight metrics exporter for LiteLLM with SQLite time-series storage.",
     version="0.0.0",
     lifespan=lifespan,

@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-import llm_pulse.app as app_module
-from llm_pulse.app import app
+import litellm_pulse.app as app_module
+from litellm_pulse.app import app
 
 
 @pytest.fixture

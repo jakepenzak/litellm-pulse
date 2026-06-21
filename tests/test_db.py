@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from llm_pulse.db import (
+from litellm_pulse.db import (
     METRIC_KEYS,
     get_history,
     get_latest,

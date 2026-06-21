@@ -1,33 +1,41 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jakepenzak/llm-pulse/main/assets/llm-pulse.svg" alt="LLM Pulse" width="320">
+  <img src="https://raw.githubusercontent.com/jakepenzak/litellm-pulse/main/assets/litellm-pulse.svg" alt="LiteLLM Pulse" width="320">
 </p>
 
 <p align="center">
-  <a href="https://github.com/jakepenzak/llm-pulse/releases"><img src="https://img.shields.io/github/v/release/jakepenzak/llm-pulse" alt="GitHub release"></a>
+  <a href="https://github.com/jakepenzak/litellm-pulse/releases"><img src="https://img.shields.io/github/v/release/jakepenzak/litellm-pulse" alt="GitHub release"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-blue" alt="Python 3.11+"></a>
-  <a href="https://github.com/jakepenzak/llm-pulse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/jakepenzak/llm-pulse" alt="License: MIT"></a>
-  <a href="https://github.com/jakepenzak/llm-pulse"><img src="https://img.shields.io/badge/status-beta-yellow" alt="Development Status"></a>
+  <a href="https://github.com/jakepenzak/litellm-pulse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/jakepenzak/litellm-pulse" alt="License: MIT"></a>
+  <a href="https://github.com/jakepenzak/litellm-pulse"><img src="https://img.shields.io/badge/status-beta-yellow" alt="Development Status"></a>
   <br>
-  <a href="https://github.com/jakepenzak/llm-pulse/actions/workflows/ci.yml"><img src="https://github.com/jakepenzak/llm-pulse/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/jakepenzak/llm-pulse/actions/workflows/release.yml"><img src="https://github.com/jakepenzak/llm-pulse/actions/workflows/release.yml/badge.svg" alt="Release"></a>
+  <a href="https://github.com/jakepenzak/litellm-pulse/actions/workflows/ci.yml"><img src="https://github.com/jakepenzak/litellm-pulse/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/jakepenzak/litellm-pulse/actions/workflows/release.yml"><img src="https://github.com/jakepenzak/litellm-pulse/actions/workflows/release.yml/badge.svg" alt="Release"></a>
 </p>
 
 
 
 A lightweight metrics exporter for [LiteLLM](https://github.com/BerriAI/litellm) — scrapes Prometheus metrics, stores them in SQLite, and serves JSON for dashboards like [Homepage](https://gethomepage.dev) and home automation systems like [Home Assistant](https://www.home-assistant.io).
 
+## Why
+
+LiteLLM exposes usage metrics in Prometheus format, but consuming them typically means standing up Prometheus, Grafana, and an alertmanager — a stack that's overkill if you just want to see "how much did I spend today?" on a dashboard. For homelab enthusiasts running LiteLLM alongside services like Homepage and Home Assistant, that's a lot of overhead for very simple needs.
+
+LiteLLM Pulse is a lightweight observability layer that sits between LiteLLM's `/metrics` endpoint and a JSON-based REST API. It scrapes Prometheus text format on a schedule, stores time-series snapshots in SQLite, and serves clean JSON that any HTTP client can consume — no Prometheus server, no Grafana dashboards, no query language to learn.
+
+It is **not** designed to replace Prometheus or Grafana. If you need multi-source metrics, complex alerting rules, or rich visual dashboards, use those tools. LiteLLM Pulse is for the 90% case: you have a single LiteLLM instance, you want today's token spend on your Homepage dashboard, and you don't want to run three more containers to get it.
+
 ## What It Does
 
-LiteLLM exposes usage metrics (requests, tokens, spend) in Prometheus text format as cumulative counters. LLM Pulse scrapes that endpoint on a schedule, parses the metrics, stores snapshots in SQLite, and serves them as clean JSON over a REST API.
+LiteLLM exposes usage metrics (requests, tokens, spend) in Prometheus text format as cumulative counters. LiteLLM Pulse scrapes that endpoint on a schedule, parses the metrics, stores snapshots in SQLite, and serves them as clean JSON over a REST API.
 
-Beyond raw cumulative totals, LLM Pulse computes **deltas** (change since last scrape), and **daily/weekly/monthly aggregates** (sum of deltas since the start of the current day/week/month) — all backed by SQLite for persistence across restarts.
+Beyond raw cumulative totals, LiteLLM Pulse computes **deltas** (change since last scrape), and **daily/weekly/monthly aggregates** (sum of deltas since the start of the current day/week/month) — all backed by SQLite for persistence across restarts.
 
 ```
-LiteLLM /metrics  ──scrape──▶  LLM Pulse  ──JSON──▶  Homepage / Home Assistant / anything
-                                   │
-                                   ▼
-                               SQLite
-                          (time-series storage)
+LiteLLM /metrics  ──scrape──▶  LiteLLM Pulse  ──JSON──▶  Homepage / Home Assistant / anything
+                                    │
+                                    ▼
+                                SQLite
+                           (time-series storage)
 ```
 
 ## Quick Start
@@ -36,68 +44,68 @@ LiteLLM /metrics  ──scrape──▶  LLM Pulse  ──JSON──▶  Homepag
 
 ```yaml
 services:
-  llm-pulse:
-    image: ghcr.io/jakepenzak/llm-pulse:latest
-    container_name: llm-pulse
+  litellm-pulse:
+    image: ghcr.io/jakepenzak/litellm-pulse:latest
+    container_name: litellm-pulse
     restart: unless-stopped
     environment:
-      LLM_PULSE_METRICS_URL: "http://litellm:4000/metrics/"
-      LLM_PULSE_SCRAPE_INTERVAL: "60"
-      LLM_PULSE_PORT: "8000"
+      LITELLM_PULSE_METRICS_URL: "http://litellm:4000/metrics/"
+      LITELLM_PULSE_SCRAPE_INTERVAL: "60"
+      LITELLM_PULSE_PORT: "8000"
     ports:
       - "8000:8000"
     volumes:
-      - llm-pulse-data:/app/data
+      - litellm-pulse-data:/app/data
 
 volumes:
-  llm-pulse-data:
+  litellm-pulse-data:
 ```
 
 ### Running Locally (with uv)
 
 ```bash
 uv sync
-uv run llm-pulse
+uv run litellm-pulse
 ```
 
 ## Configuration
 
-All configuration is via environment variables prefixed with `LLM_PULSE_`. No config files required.
+All configuration is via environment variables prefixed with `LITELLM_PULSE_`. No config files required.
 
 ### Core Settings
 
 | Variable | Default | Description |
 |---|---|---|
-| `LLM_PULSE_METRICS_URL` | `http://litellm:4000/metrics/` | Prometheus metrics endpoint to scrape |
-| `LLM_PULSE_SCRAPE_INTERVAL` | `60` | Seconds between scrapes |
-| `LLM_PULSE_PORT` | `8000` | Port to serve the API on |
-| `LLM_PULSE_HOST` | `0.0.0.0` | Address to bind to |
-| `LLM_PULSE_VERIFY_SSL` | `false` | Whether to verify TLS certificates when scraping |
-| `LLM_PULSE_SCRAPE_TIMEOUT` | `30` | Request timeout in seconds |
-| `LLM_PULSE_LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warning`, `error`) |
+| `LITELLM_PULSE_METRICS_URL` | `http://litellm:4000/metrics/` | Prometheus metrics endpoint to scrape |
+| `LITELLM_PULSE_SCRAPE_INTERVAL` | `60` | Seconds between scrapes |
+| `LITELLM_PULSE_PORT` | `8000` | Port to serve the API on |
+| `LITELLM_PULSE_HOST` | `0.0.0.0` | Address to bind to |
+| `LITELLM_PULSE_VERIFY_SSL` | `false` | Whether to verify TLS certificates when scraping |
+| `LITELLM_PULSE_SCRAPE_TIMEOUT` | `30` | Request timeout in seconds |
+| `LITELLM_PULSE_LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warning`, `error`) |
 
 ### SQLite / Time-Series Settings
 
 | Variable | Default | Description |
 |---|---|---|
-| `LLM_PULSE_DB_PATH` | `./data/llm_pulse.db` | Path to the SQLite database file |
-| `LLM_PULSE_DB_RETENTION_DAYS` | `90` | Auto-purge data older than N days (hourly purge cycle) |
-| `LLM_PULSE_HISTORY_SIZE` | `168` | Max snapshots in the in-memory ring buffer (used as fallback if DB is unavailable) |
+| `LITELLM_PULSE_DB_PATH` | `./data/litellm_pulse.db` | Path to the SQLite database file |
+| `LITELLM_PULSE_DB_RETENTION_DAYS` | `90` | Auto-purge data older than N days (hourly purge cycle) |
+| `LITELLM_PULSE_HISTORY_SIZE` | `168` | Max snapshots in the in-memory ring buffer (used as fallback if DB is unavailable) |
 
 ### Metric Mappings
 
-Each tracked metric maps a friendly name to a Prometheus metric name. Override any of them by setting the corresponding `LLM_PULSE_METRIC_*` env var.
+Each tracked metric maps a friendly name to a Prometheus metric name. Override any of them by setting the corresponding `LITELLM_PULSE_METRIC_*` env var.
 
 | Variable | Default |
 |---|---|
-| `LLM_PULSE_METRIC_REQUESTS` | `litellm_proxy_total_requests_metric_total` |
-| `LLM_PULSE_METRIC_FAILED_REQUESTS` | `litellm_proxy_failed_requests_metric_total` |
-| `LLM_PULSE_METRIC_TOKENS` | `litellm_total_tokens_metric_total` |
-| `LLM_PULSE_METRIC_INPUT_TOKENS` | `litellm_input_tokens_metric_total` |
-| `LLM_PULSE_METRIC_OUTPUT_TOKENS` | `litellm_output_tokens_metric_total` |
-| `LLM_PULSE_METRIC_REASONING_TOKENS` | `litellm_output_reasoning_tokens_metric_total` |
-| `LLM_PULSE_METRIC_COST` | `litellm_spend_metric_total` |
-| `LLM_PULSE_METRIC_IN_FLIGHT_REQUESTS` | `litellm_in_flight_requests` |
+| `LITELLM_PULSE_METRIC_REQUESTS` | `litellm_proxy_total_requests_metric_total` |
+| `LITELLM_PULSE_METRIC_FAILED_REQUESTS` | `litellm_proxy_failed_requests_metric_total` |
+| `LITELLM_PULSE_METRIC_TOKENS` | `litellm_total_tokens_metric_total` |
+| `LITELLM_PULSE_METRIC_INPUT_TOKENS` | `litellm_input_tokens_metric_total` |
+| `LITELLM_PULSE_METRIC_OUTPUT_TOKENS` | `litellm_output_tokens_metric_total` |
+| `LITELLM_PULSE_METRIC_REASONING_TOKENS` | `litellm_output_reasoning_tokens_metric_total` |
+| `LITELLM_PULSE_METRIC_COST` | `litellm_spend_metric_total` |
+| `LITELLM_PULSE_METRIC_IN_FLIGHT_REQUESTS` | `litellm_in_flight_requests` |
 
 ## API Endpoints
 
@@ -189,11 +197,11 @@ Returns `{"status": "ok"}` once the first successful scrape has completed.
 
 ## How Deltas & Aggregates Work
 
-LiteLLM's Prometheus metrics are **counters** — they grow cumulatively and only reset when the LiteLLM process restarts. LLM Pulse handles this as follows:
+LiteLLM's Prometheus metrics are **counters** — they grow cumulatively and only reset when the LiteLLM process restarts. LiteLLM Pulse handles this as follows:
 
 1. **Each scrape** stores the raw cumulative value and a computed delta (change since the previous scrape).
 2. **Daily/weekly/monthly** values are computed as `SUM(delta)` for all scrapes within the time window.
-3. **Counter reset detection**: If any counter drops by more than 50%, LLM Pulse assumes LiteLLM restarted. The delta for that scrape is set to the current value (treating it as starting from 0), and `is_reset=true` is recorded in the database. This ensures daily/weekly/monthly sums remain correct even across LiteLLM restarts.
+3. **Counter reset detection**: If any counter drops by more than 50%, LiteLLM Pulse assumes LiteLLM restarted. The delta for that scrape is set to the current value (treating it as starting from 0), and `is_reset=true` is recorded in the database. This ensures daily/weekly/monthly sums remain correct even across LiteLLM restarts.
 
 ## State Recovery
 
@@ -218,7 +226,7 @@ Add a service entry in `services.yaml` with a `customapi` widget:
     description: LLM proxy and management
     widget:
       type: customapi
-      url: http://llm-pulse:8000/api/v1/metrics
+      url: http://litellm-pulse:8000/api/v1/metrics
       refreshInterval: 60000
       mappings:
         - field: requests
@@ -239,11 +247,11 @@ Add a service entry in `services.yaml` with a `customapi` widget:
 
 ### Home Assistant (REST Sensors)
 
-Add RESTful sensors to `configuration.yaml`. The [`rest`](https://www.home-assistant.io/integrations/rest) integration lets you define multiple sensors from a single HTTP request, which avoids polling the LLM Pulse endpoint more than necessary:
+Add RESTful sensors to `configuration.yaml`. The [`rest`](https://www.home-assistant.io/integrations/rest) integration lets you define multiple sensors from a single HTTP request, which avoids polling the LiteLLM Pulse endpoint more than necessary:
 
 ```yaml
 rest:
-  - resource: http://llm-pulse:8000/api/v1/metrics
+  - resource: http://litellm-pulse:8000/api/v1/metrics
     scan_interval: 60        # seconds between polls (default: 30)
     timeout: 10              # seconds before the sensor is marked unavailable
     verify_ssl: true
@@ -289,7 +297,7 @@ If you only need a single metric, you can use the [`sensor.rest`](https://www.ho
 ```yaml
 sensor:
   - platform: rest
-    resource: http://llm-pulse:8000/api/v1/metrics/cost_daily
+    resource: http://litellm-pulse:8000/api/v1/metrics/cost_daily
     name: LiteLLM Spend Today
     unique_id: litellm_spend_today
     value_template: "{{ value_json.value }}"
@@ -358,9 +366,9 @@ When PRs with conventional commit titles are merged to `main`:
 
 1. release-please maintains a "release PR" that accumulates changes and updates `CHANGELOG.md`
 2. When the release PR is merged, a new GitHub Release is created with an auto-generated changelog (with emoji section headers)
-3. release-please bumps the version in `pyproject.toml` and `llm_pulse/__init__.py`
+3. release-please bumps the version in `pyproject.toml` and `litellm_pulse/__init__.py`
 4. The Docker build & publish workflow is triggered by the `release: published` event
-5. Images are tagged with semantic version (e.g., `v0.1.0`), major/minor aliases (e.g., `0.1`, `0`), and `latest`
+5. Images are tagged with semantic version (e.g., `v1.2.3`), major/minor aliases (e.g., `1.2`, `1`), and `latest`
 
 ### Setup
 
@@ -371,7 +379,7 @@ uv sync                    # install all deps including dev tools
 ### Running
 
 ```bash
-uv run llm-pulse           # run the server locally
+uv run litellm-pulse       # run the server locally
 ```
 
 ### Linting & Formatting
@@ -396,8 +404,7 @@ uv run pytest -v           # run tests
 | Workflow | Trigger | What it does |
 |---|---|---|
 | **CI** ([ci.yml](.github/workflows/ci.yml)) | Push to `main`, PRs | Runs pre-commit (ruff lint + format) and pytest on Python 3.11 & 3.12 |
-| **Release Please** ([release-please.yml](.github/workflows/release-please.yml)) | Push to `main` | Manages versioning, generates changelog, creates GitHub releases |
-| **Release** ([release.yml](.github/workflows/release.yml)) | GitHub Release published | Builds Docker image and publishes to `ghcr.io/jakepenzak/llm-pulse` with semantic version tags |
+| **Release** ([release.yml](.github/workflows/release.yml)) |  Push to `main` | Runs `release-please` suite. On releases created via `release-please`, builds Docker image and publishes to `ghcr.io/jakepenzak/litellm-pulse` with semantic version tags |
 
 ### Using the Pre-built Docker Image
 
@@ -405,19 +412,19 @@ Once a release is published, the image is available on GHCR:
 
 ```yaml
 services:
-  llm-pulse:
-    image: ghcr.io/jakepenzak/llm-pulse:latest
-    container_name: llm-pulse
+  litellm-pulse:
+    image: ghcr.io/jakepenzak/litellm-pulse:latest
+    container_name: litellm-pulse
     restart: unless-stopped
     environment:
-      LLM_PULSE_METRICS_URL: "http://litellm:4000/metrics/"
+      LITELLM_PULSE_METRICS_URL: "http://litellm:4000/metrics/"
     ports:
       - "8000:8000"
     volumes:
-      - llm-pulse-data:/app/data
+      - litellm-pulse-data:/app/data
 
 volumes:
-  llm-pulse-data:
+  litellm-pulse-data:
 ```
 
 ## License

@@ -1,6 +1,6 @@
 [project]
-name = "llm-pulse"
-version = "0.1.0"
+name = "litellm-pulse"
+version = "0.0.0"
 description = "A lightweight metrics exporter for LiteLLM — scrapes Prometheus metrics and serves JSON for dashboards like Homepage and Home Assistant."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,12 +22,12 @@ dependencies = [
 ]
 
 [project.scripts]
-llm-pulse = "llm_pulse.app:main"
+litellm-pulse = "litellm_pulse.app:main"
 
 [project.urls]
-Homepage = "https://github.com/jakepenzak/llm-pulse"
-Repository = "https://github.com/jakepenzak/llm-pulse"
-Issues = "https://github.com/jakepenzak/llm-pulse/issues"
+Homepage = "https://github.com/jakepenzak/litellm-pulse"
+Repository = "https://github.com/jakepenzak/litellm-pulse"
+Issues = "https://github.com/jakepenzak/litellm-pulse/issues"
 
 [build-system]
 requires = ["hatchling"]

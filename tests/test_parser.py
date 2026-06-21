@@ -1,6 +1,6 @@
 """Tests for the Prometheus text format parser."""
 
-from llm_pulse.parser import parse_prometheus_text
+from litellm_pulse.parser import parse_prometheus_text
 
 
 class TestBasicParsing:

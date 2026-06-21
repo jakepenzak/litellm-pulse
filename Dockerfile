@@ -5,7 +5,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 
 COPY pyproject.toml README.md ./
-COPY llm_pulse/ llm_pulse/
+COPY litellm_pulse/ litellm_pulse/
 
 RUN uv sync --no-dev
 
@@ -15,4 +15,4 @@ VOLUME /app/data
 
 EXPOSE 8000
 
-CMD ["uv", "run", "llm-pulse"]
+CMD ["uv", "run", "litellm-pulse"]

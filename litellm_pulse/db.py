@@ -7,7 +7,7 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-logger = logging.getLogger("llm-pulse")
+logger = logging.getLogger("litellm-pulse")
 
 # All friendly metric names — defines the columns in the scrapes table.
 METRIC_KEYS = [

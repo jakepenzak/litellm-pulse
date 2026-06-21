@@ -1,6 +1,6 @@
 {
   "release-type": "python",
-  "package-name": "llm-pulse",
+  "package-name": "litellm-pulse",
   "include-component-in-tag": false,
   "changelog-sections": [
     { "type": "feat", "section": "✨ Features", "hidden": false },

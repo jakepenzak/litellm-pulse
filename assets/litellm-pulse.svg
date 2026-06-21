@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="LLM Pulse">
-  <title>LLM Pulse</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="LiteLLM Pulse">
+  <title>LiteLLM Pulse</title>
 
   <g stroke="#522181" fill="none" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
     <polyline points="20,110 90,110 115,110 135,60 155,170 175,40 195,180 215,110 285,110 310,110 330,85 350,135 380,110"/>
@@ -12,7 +12,7 @@
   </g>
 
   <g fill="#522181" font-family="Georgia, 'Times New Roman', serif">
-    <text x="200" y="232" text-anchor="middle" font-size="62" font-weight="700" letter-spacing="2">LLM</text>
+    <text x="200" y="232" text-anchor="middle" font-size="42" font-weight="700" letter-spacing="1">LITELLM</text>
     <text x="200" y="270" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" letter-spacing="10">PULSE</text>
   </g>
 
