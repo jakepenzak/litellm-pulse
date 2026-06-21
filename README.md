@@ -1,6 +1,6 @@
-# LLM Pulse
-
 <center>
+
+<img src="assets/llm-pulse.svg" alt="LLM Pulse" width="320">
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/jakepenzak/llm-pulse)](https://github.com/jakepenzak/llm-pulse/releases)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)](https://www.python.org/downloads/)
