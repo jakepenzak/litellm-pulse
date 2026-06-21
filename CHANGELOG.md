@@ -5,7 +5,7 @@
 
 ### ✨ Features
 
-* initial LLM Pulse metrics exporter ([00f72f2](https://github.com/jakepenzak/llm-pulse/commit/00f72f299801e5daaaa0c7362795a9d4980b5e8f))
+* initial metrics exporter with Prometheus parsing ([00f72f2](https://github.com/jakepenzak/llm-pulse/commit/00f72f299801e5daaaa0c7362795a9d4980b5e8f))
 * SQLite time-series storage with daily/weekly/monthly aggregates ([c24ce5f](https://github.com/jakepenzak/llm-pulse/commit/c24ce5f453f12a170bfe8f3cb86a7ba5c30af2d9))
 
 
@@ -16,4 +16,4 @@
 
 ### 🔧 CI/CD
 
-* add CI/CD, release-please, tests, and project infrastructure ([4b184d3](https://github.com/jakepenzak/llm-pulse/commit/4b184d3b99635cc1ce49a00a89405ef5b956409d))
+* CI/CD pipelines, tests, and project infrastructure ([4b184d3](https://github.com/jakepenzak/llm-pulse/commit/4b184d3b99635cc1ce49a00a89405ef5b956409d))
