@@ -1,0 +1,39 @@
+[project]
+name = "llm-pulse"
+version = "0.1.0"
+description = "A lightweight metrics exporter for LiteLLM — scrapes Prometheus metrics and serves JSON for dashboards like Homepage and Home Assistant."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Jake Pieniazek" }]
+keywords = ["litellm", "prometheus", "metrics", "homepage", "home-assistant"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Monitoring",
+]
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "httpx>=0.28.0",
+]
+
+[project.scripts]
+llm-pulse = "llm_pulse.app:main"
+
+[project.urls]
+Homepage = "https://github.com/jakepenzak/llm-pulse"
+Repository = "https://github.com/jakepenzak/llm-pulse"
+Issues = "https://github.com/jakepenzak/llm-pulse/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+]

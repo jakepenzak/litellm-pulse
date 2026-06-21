@@ -1,0 +1,20 @@
+services:
+  llm-pulse:
+    build: .
+    # image: ghcr.io/jakepenzak/llm-pulse:latest  # if using pre-built image
+    container_name: llm-pulse
+    restart: unless-stopped
+    environment:
+      METRICS_URL: "http://litellm:4000/metrics/"
+      SCRAPE_INTERVAL: "60"
+      PORT: "8000"
+      VERIFY_SSL: "false"
+      LOG_LEVEL: "info"
+      # Override metric mappings (optional, shown with defaults):
+      # METRIC_REQUESTS: "litellm_proxy_total_requests_metric_total"
+      # METRIC_TOKENS: "litellm_total_tokens_metric_total"
+      # METRIC_COST: "litellm_spend_metric_total"
+    ports:
+      - "8000:8000"
+    # networks:
+    #   - your-network
