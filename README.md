@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jakepenzak/llm-pulse/main/llm-pulse.svg" alt="LLM Pulse" width="320">
+  <img src="https://raw.githubusercontent.com/jakepenzak/llm-pulse/main/assets/llm-pulse.svg" alt="LLM Pulse" width="320">
 </p>
 
 <p align="center">
