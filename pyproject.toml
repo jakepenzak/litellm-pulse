@@ -1,6 +1,6 @@
 [project]
 name = "llm-pulse"
-version = "0.2.0"
+version = "0.0.0"
 description = "A lightweight metrics exporter for LiteLLM — scrapes Prometheus metrics and serves JSON for dashboards like Homepage and Home Assistant."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -35,5 +35,18 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.6.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
     "ruff>=0.8.0",
 ]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

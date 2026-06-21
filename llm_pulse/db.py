@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 logger = logging.getLogger("llm-pulse")
@@ -119,9 +119,7 @@ def get_window_aggregate(conn: sqlite3.Connection, start_ts: int) -> dict[str, f
         Dict mapping friendly metric names to summed deltas over the window.
     """
     cols = ", ".join(f"COALESCE(SUM(delta_{k}), 0) AS {k}" for k in METRIC_KEYS)
-    row = conn.execute(
-        f"SELECT {cols} FROM scrapes WHERE ts >= ?", (start_ts,)
-    ).fetchone()
+    row = conn.execute(f"SELECT {cols} FROM scrapes WHERE ts >= ?", (start_ts,)).fetchone()
     return {k: row[k] for k in METRIC_KEYS}
 
 
@@ -145,7 +143,7 @@ def get_history(conn: sqlite3.Connection, limit: int = 168) -> list[dict]:
     results = []
     for row in rows:
         entry: dict[str, float | int | str] = {
-            "timestamp": datetime.fromtimestamp(row["ts"], tz=timezone.utc).isoformat(),
+            "timestamp": datetime.fromtimestamp(row["ts"], tz=UTC).isoformat(),
             "is_reset": bool(row["is_reset"]),
         }
         for k in METRIC_KEYS:
@@ -174,7 +172,5 @@ def purge_old(conn: sqlite3.Connection, retention_days: int) -> int:
     conn.commit()
     deleted = cursor.rowcount
     if deleted:
-        logger.info(
-            "Purged %d old scrapes (older than %d days)", deleted, retention_days
-        )
+        logger.info("Purged %d old scrapes (older than %d days)", deleted, retention_days)
     return deleted

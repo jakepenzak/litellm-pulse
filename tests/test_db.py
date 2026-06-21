@@ -1,0 +1,202 @@
+"""Tests for the SQLite time-series storage module."""
+
+import time
+
+import pytest
+
+from llm_pulse.db import (
+    METRIC_KEYS,
+    get_history,
+    get_latest,
+    get_latest_ts,
+    get_window_aggregate,
+    open_db,
+    purge_old,
+    store_snapshot,
+)
+
+
+@pytest.fixture
+def db(tmp_path):
+    """Create a fresh in-memory-style SQLite DB in a temp directory."""
+    db_path = str(tmp_path / "test.db")
+    conn = open_db(db_path)
+    yield conn
+    conn.close()
+
+
+def _make_raw(**overrides) -> dict[str, float]:
+    raw = {k: 0.0 for k in METRIC_KEYS}
+    raw.update(overrides)
+    return raw
+
+
+def _make_deltas(**overrides) -> dict[str, float]:
+    deltas = {k: 0.0 for k in METRIC_KEYS}
+    deltas.update(overrides)
+    return deltas
+
+
+class TestOpenDb:
+    def test_creates_table(self, db):
+        tables = db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        names = [t["name"] for t in tables]
+        assert "scrapes" in names
+
+    def test_creates_index(self, db):
+        indexes = db.execute("SELECT name FROM sqlite_master WHERE type='index'").fetchall()
+        names = [i["name"] for i in indexes]
+        assert "idx_scrapes_ts" in names
+
+    def test_creates_parent_dir(self, tmp_path):
+        nested = str(tmp_path / "nested" / "deep" / "test.db")
+        conn = open_db(nested)
+        conn.close()
+        assert (tmp_path / "nested" / "deep" / "test.db").exists()
+
+    def test_wal_mode(self, db):
+        mode = db.execute("PRAGMA journal_mode").fetchone()
+        assert mode[0].lower() == "wal"
+
+
+class TestStoreAndGetLatest:
+    def test_store_and_get_latest(self, db):
+        ts = int(time.time())
+        raw = _make_raw(requests=100.0, cost=5.0)
+        deltas = _make_deltas(requests=10.0, cost=0.5)
+        store_snapshot(db, ts, raw, deltas, is_reset=False)
+
+        result = get_latest(db)
+        assert result is not None
+        assert result["requests"] == 100.0
+        assert result["cost"] == 5.0
+
+    def test_get_latest_returns_none_on_empty(self, db):
+        assert get_latest(db) is None
+
+    def test_get_latest_returns_most_recent(self, db):
+        store_snapshot(db, 1000, _make_raw(requests=10), _make_deltas(), False)
+        store_snapshot(db, 2000, _make_raw(requests=20), _make_deltas(), False)
+        store_snapshot(db, 1500, _make_raw(requests=15), _make_deltas(), False)
+
+        result = get_latest(db)
+        assert result is not None
+        assert result["requests"] == 20.0
+
+    def test_get_latest_ts(self, db):
+        store_snapshot(db, 12345, _make_raw(), _make_deltas(), False)
+        assert get_latest_ts(db) == 12345
+
+    def test_get_latest_ts_empty(self, db):
+        assert get_latest_ts(db) is None
+
+    def test_store_marks_is_reset(self, db):
+        store_snapshot(db, 1000, _make_raw(), _make_deltas(), is_reset=True)
+        row = db.execute("SELECT is_reset FROM scrapes WHERE ts = 1000").fetchone()
+        assert row["is_reset"] == 1
+
+    def test_store_marks_not_reset(self, db):
+        store_snapshot(db, 1000, _make_raw(), _make_deltas(), is_reset=False)
+        row = db.execute("SELECT is_reset FROM scrapes WHERE ts = 1000").fetchone()
+        assert row["is_reset"] == 0
+
+
+class TestWindowAggregate:
+    def test_sum_deltas_in_window(self, db):
+        store_snapshot(db, 1000, _make_raw(), _make_deltas(requests=10, cost=1), False)
+        store_snapshot(db, 2000, _make_raw(), _make_deltas(requests=20, cost=2), False)
+        store_snapshot(db, 3000, _make_raw(), _make_deltas(requests=30, cost=3), False)
+
+        result = get_window_aggregate(db, start_ts=1000)
+        assert result["requests"] == 60.0
+        assert result["cost"] == 6.0
+
+    def test_excludes_before_window(self, db):
+        store_snapshot(db, 500, _make_raw(), _make_deltas(requests=100), False)
+        store_snapshot(db, 1000, _make_raw(), _make_deltas(requests=10), False)
+        store_snapshot(db, 2000, _make_raw(), _make_deltas(requests=20), False)
+
+        result = get_window_aggregate(db, start_ts=1000)
+        assert result["requests"] == 30.0
+
+    def test_empty_db_returns_zeros(self, db):
+        result = get_window_aggregate(db, start_ts=1000)
+        for key in METRIC_KEYS:
+            assert result[key] == 0.0
+
+
+class TestGetHistory:
+    def test_returns_chronological_order(self, db):
+        store_snapshot(db, 3000, _make_raw(requests=30), _make_deltas(), False)
+        store_snapshot(db, 1000, _make_raw(requests=10), _make_deltas(), False)
+        store_snapshot(db, 2000, _make_raw(requests=20), _make_deltas(), False)
+
+        history = get_history(db, limit=10)
+        assert len(history) == 3
+        assert history[0]["timestamp"] < history[1]["timestamp"] < history[2]["timestamp"]
+
+    def test_respects_limit(self, db):
+        for i in range(10):
+            store_snapshot(db, 1000 + i, _make_raw(requests=i), _make_deltas(), False)
+
+        history = get_history(db, limit=5)
+        assert len(history) == 5
+        # Should return the 5 most recent
+        assert history[-1]["requests"] == 9.0
+
+    def test_includes_reset_flag(self, db):
+        store_snapshot(db, 1000, _make_raw(), _make_deltas(), is_reset=True)
+        store_snapshot(db, 2000, _make_raw(), _make_deltas(), is_reset=False)
+
+        history = get_history(db, limit=10)
+        assert history[0]["is_reset"] is True
+        assert history[1]["is_reset"] is False
+
+    def test_includes_raw_and_delta_values(self, db):
+        store_snapshot(
+            db,
+            1000,
+            _make_raw(requests=100, cost=5.0),
+            _make_deltas(requests=10, cost=0.5),
+            False,
+        )
+        history = get_history(db, limit=1)
+        entry = history[0]
+        assert entry["requests"] == 100.0
+        assert entry["requests_delta"] == 10.0
+        assert entry["cost"] == 5.0
+        assert entry["cost_delta"] == 0.5
+
+
+class TestPurgeOld:
+    def test_deletes_old_entries(self, db):
+        # Use SQLite's strftime to ensure consistent time handling
+        db.execute("DELETE FROM scrapes")
+        db.execute(
+            "INSERT INTO scrapes (ts, is_reset) VALUES "
+            "(strftime('%s', 'now', '-10 days'), 0), "
+            "(strftime('%s', 'now', '-1 day'), 0)"
+        )
+        db.commit()
+
+        deleted = purge_old(db, retention_days=7)
+        assert deleted == 1
+
+        remaining = db.execute("SELECT COUNT(*) as c FROM scrapes").fetchone()
+        assert remaining["c"] == 1
+
+    def test_keeps_recent_entries(self, db):
+        db.execute("DELETE FROM scrapes")
+        db.execute(
+            "INSERT INTO scrapes (ts, is_reset) VALUES "
+            "(strftime('%s', 'now', '-1 day'), 0), "
+            "(strftime('%s', 'now', '-1 hour'), 0)"
+        )
+        db.commit()
+
+        deleted = purge_old(db, retention_days=7)
+        assert deleted == 0
+
+    def test_empty_db(self, db):
+        deleted = purge_old(db, retention_days=30)
+        assert deleted == 0

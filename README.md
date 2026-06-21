@@ -1,5 +1,18 @@
 # LLM Pulse
 
+<center>
+
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/jakepenzak/llm-pulse)](https://github.com/jakepenzak/llm-pulse/releases)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/github/license/jakepenzak/llm-pulse)](https://github.com/jakepenzak/llm-pulse/blob/main/LICENSE)
+[![Development Status](https://img.shields.io/badge/status-beta-yellow)](https://github.com/jakepenzak/llm-pulse)
+
+[![CI](https://github.com/jakepenzak/llm-pulse/actions/workflows/ci.yml/badge.svg)](https://github.com/jakepenzak/llm-pulse/actions/workflows/ci.yml)
+[![Release Please](https://github.com/jakepenzak/llm-pulse/actions/workflows/release-please.yml/badge.svg)](https://github.com/jakepenzak/llm-pulse/actions/workflows/release-please.yml)
+[![Release](https://github.com/jakepenzak/llm-pulse/actions/workflows/release.yml/badge.svg)](https://github.com/jakepenzak/llm-pulse/actions/workflows/release.yml)
+
+</center>
+
 A lightweight metrics exporter for [LiteLLM](https://github.com/BerriAI/litellm) — scrapes Prometheus metrics, stores them in SQLite, and serves JSON for dashboards like [Homepage](https://gethomepage.dev) and home automation systems like [Home Assistant](https://www.home-assistant.io).
 
 ## What It Does
@@ -252,15 +265,125 @@ rest:
         unit_of_measurement: "tokens"
 ```
 
-## Development
+## Contributing
+
+Contributions are welcome! Please read the guidelines below before opening a pull request.
+
+### Pull Request Process
+
+1. Fork the repository and create a feature branch from `main`
+2. Run `uv run pre-commit install` to set up local git hooks
+3. Make your changes, ensuring `pre-commit run --all-files` passes
+4. Add or update tests as appropriate
+5. Open a pull request with a clear description of the changes
+
+### Conventional Commits
+
+**Pull request titles must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.** This is enforced by branch protection rules and is required for the release automation to work correctly.
+
+The format is:
+
+```
+<type>(<scope>): <description>
+```
+
+#### Allowed Types
+
+| Type | Description |
+|---|---|
+| `feat` | A new feature |
+| `fix` | A bug fix |
+| `docs` | Documentation only changes |
+| `style` | Changes that do not affect the meaning of the code (formatting, etc.) |
+| `refactor` | A code change that neither fixes a bug nor adds a feature |
+| `perf` | A code change that improves performance |
+| `test` | Adding or correcting tests |
+| `ci` | Changes to CI configuration files and scripts |
+| `chore` | Other changes that don't modify src or test files |
+| `build` | Changes that affect the build system or dependencies |
+
+#### Examples
+
+- `feat: add Prometheus push gateway support`
+- `fix(db): handle negative deltas on counter reset`
+- `docs: update Home Assistant integration examples`
+- `ci: add Python 3.13 to test matrix`
+- `refactor(parser): simplify metric extraction logic`
+
+#### Scopes (optional)
+
+Common scopes: `parser`, `db`, `app`, `ci`, `docker`, `deps`
+
+### Releases
+
+Releases are managed automatically by [release-please](https://github.com/googleapis/release-please) using the [manifest-driven](https://github.com/googleapis/release-please/blob/main/docs/manifest-releaser.md) approach. Configuration lives in [`.github/release-please-config.json`](.github/release-please-config.json) and version tracking in [`.github/.release-please-manifest.json`](.github/.release-please-manifest.json).
+
+When PRs with conventional commit titles are merged to `main`:
+
+1. release-please maintains a "release PR" that accumulates changes and updates `CHANGELOG.md`
+2. When the release PR is merged, a new GitHub Release is created with an auto-generated changelog (with emoji section headers)
+3. release-please bumps the version in `pyproject.toml` and `llm_pulse/__init__.py`
+4. The Docker build & publish workflow is triggered by the `release: published` event
+5. Images are tagged with semantic version (e.g., `v0.1.0`), major/minor aliases (e.g., `0.1`, `0`), and `latest`
+
+### Setup
 
 ```bash
-uv sync                    # install deps
-uv run llm-pulse           # run the server
-uv run ruff check .        # lint
-uv run ruff format .       # format
+uv sync                    # install all deps including dev tools
+```
+
+### Running
+
+```bash
+uv run llm-pulse           # run the server locally
+```
+
+### Linting & Formatting
+
+Linting and formatting are enforced via [pre-commit](https://pre-commit.com) with [ruff](https://docs.astral.sh/ruff):
+
+```bash
+uv run pre-commit install           # install git hooks (run once)
+uv run pre-commit run --all-files   # run all checks manually
+```
+
+This runs `ruff check --fix` and `ruff format` across the codebase. The same checks run in CI on every push and pull request.
+
+### Testing
+
+```bash
+uv run pytest -v           # run tests
+```
+
+### CI/CD
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| **CI** ([ci.yml](.github/workflows/ci.yml)) | Push to `main`, PRs | Runs pre-commit (ruff lint + format) and pytest on Python 3.11 & 3.12 |
+| **Release Please** ([release-please.yml](.github/workflows/release-please.yml)) | Push to `main` | Manages versioning, generates changelog, creates GitHub releases |
+| **Release** ([release.yml](.github/workflows/release.yml)) | GitHub Release published | Builds Docker image and publishes to `ghcr.io/jakepenzak/llm-pulse` with semantic version tags |
+
+### Using the Pre-built Docker Image
+
+Once a release is published, the image is available on GHCR:
+
+```yaml
+services:
+  llm-pulse:
+    image: ghcr.io/jakepenzak/llm-pulse:latest
+    container_name: llm-pulse
+    restart: unless-stopped
+    environment:
+      LLM_PULSE_METRICS_URL: "http://litellm:4000/metrics/"
+    ports:
+      - "8000:8000"
+    volumes:
+      - llm-pulse-data:/app/data
+
+volumes:
+  llm-pulse-data:
 ```
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

@@ -6,8 +6,8 @@ import asyncio
 import logging
 import os
 from collections import deque
-from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from contextlib import asynccontextmanager, suppress
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -58,9 +58,7 @@ DEFAULT_METRIC_MAP = {
 
 METRIC_MAP: dict[str, str] = {}
 for _friendly, _prom in DEFAULT_METRIC_MAP.items():
-    METRIC_MAP[_friendly] = os.environ.get(
-        f"LLM_PULSE_METRIC_{_friendly.upper()}", _prom
-    )
+    METRIC_MAP[_friendly] = os.environ.get(f"LLM_PULSE_METRIC_{_friendly.upper()}", _prom)
 
 # ---------------------------------------------------------------------------
 # State
@@ -70,9 +68,7 @@ _raw_metrics: dict[str, float] = {}
 _previous_raw: dict[str, float] = {}
 _last_scrape: datetime | None = None
 _last_error: str | None = None
-_history: deque[dict[str, Any]] = (
-    deque(maxlen=HISTORY_SIZE) if HISTORY_SIZE > 0 else None
-)
+_history: deque[dict[str, Any]] = deque(maxlen=HISTORY_SIZE) if HISTORY_SIZE > 0 else None
 _db: Any = None  # sqlite3.Connection
 
 
@@ -89,9 +85,8 @@ def _detect_reset(prev: dict[str, float], curr: dict[str, float]) -> bool:
         prom_name = METRIC_MAP[key]
         old_val = prev.get(prom_name)
         new_val = curr.get(prom_name)
-        if old_val is not None and new_val is not None and old_val > 0:
-            if new_val < old_val * 0.5:
-                return True
+        if old_val is not None and new_val is not None and old_val > 0 and new_val < old_val * 0.5:
+            return True
     return False
 
 
@@ -115,20 +110,20 @@ def _compute_deltas(
 
 
 def _start_of_day() -> int:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     return int(start.timestamp())
 
 
 def _start_of_week() -> int:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
     start = start_of_day - timedelta(days=start_of_day.weekday())
     return int(start.timestamp())
 
 
 def _start_of_month() -> int:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     return int(start.timestamp())
 
@@ -145,7 +140,7 @@ async def _scrape(client: httpx.AsyncClient) -> None:
         resp = await client.get(METRICS_URL, timeout=SCRAPE_TIMEOUT)
         resp.raise_for_status()
         _raw_metrics = parse_prometheus_text(resp.text)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         _last_scrape = now
         _last_error = None
 
@@ -223,9 +218,7 @@ async def lifespan(_app: FastAPI):
         latest = get_latest(_db)
         if latest:
             _previous_raw = {METRIC_MAP[k]: latest.get(k, 0.0) for k in METRIC_KEYS}
-            logger.info(
-                "Recovered state from DB — %d metrics loaded", len(_previous_raw)
-            )
+            logger.info("Recovered state from DB — %d metrics loaded", len(_previous_raw))
         else:
             logger.info("DB empty — starting fresh")
     except Exception as exc:
@@ -243,14 +236,10 @@ async def lifespan(_app: FastAPI):
     yield
     scrape_task.cancel()
     purge_task.cancel()
-    try:
+    with suppress(asyncio.CancelledError):
         await scrape_task
-    except asyncio.CancelledError:
-        pass
-    try:
+    with suppress(asyncio.CancelledError):
         await purge_task
-    except asyncio.CancelledError:
-        pass
     if _db is not None:
         _db.close()
 
@@ -258,7 +247,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title="LLM Pulse",
     description="A lightweight metrics exporter for LiteLLM with SQLite time-series storage.",
-    version="0.2.0",
+    version="0.0.0",
     lifespan=lifespan,
 )
 
