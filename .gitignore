@@ -9,3 +9,7 @@ data/
 *.db
 *.db-wal
 *.db-shm
+
+# Test reports
+.coverage
+tests/reports/

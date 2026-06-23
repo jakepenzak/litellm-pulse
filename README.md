@@ -38,6 +38,28 @@ LiteLLM /metrics  ──scrape──▶  LiteLLM Pulse  ──JSON──▶  Hom
                            (time-series storage)
 ```
 
+## LiteLLM Setup
+
+> **The LiteLLM `/metrics` endpoint is not enabled by default.** You must configure LiteLLM to publish Prometheus metrics before LiteLLM Pulse can scrape them.
+
+Add the `prometheus` callback to your LiteLLM proxy config (`config.yaml`):
+
+```yaml
+litellm_settings:
+  callbacks:
+    - prometheus
+```
+
+Start LiteLLM and verify the endpoint:
+
+```bash
+curl http://localhost:4000/metrics/
+```
+
+If you see Prometheus-formatted text, LiteLLM is publishing metrics and you're ready to set up LiteLLM Pulse.
+
+See the [LiteLLM Prometheus docs](https://docs.litellm.ai/docs/proxy/prometheus) for advanced configuration options.
+
 ## Quick Start
 
 ### Docker Compose
@@ -52,6 +74,7 @@ services:
       LITELLM_PULSE_METRICS_URL: "http://litellm:4000/metrics/"
       LITELLM_PULSE_SCRAPE_INTERVAL: "60"
       LITELLM_PULSE_PORT: "8000"
+      # LITELLM_PULSE_METRICS_API_KEY: "sk-your-litellm-api-key"
     ports:
       - "8000:8000"
     volumes:
@@ -83,6 +106,9 @@ All configuration is via environment variables prefixed with `LITELLM_PULSE_`. N
 | `LITELLM_PULSE_VERIFY_SSL` | `false` | Whether to verify TLS certificates when scraping |
 | `LITELLM_PULSE_SCRAPE_TIMEOUT` | `30` | Request timeout in seconds |
 | `LITELLM_PULSE_LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warning`, `error`) |
+| `LITELLM_PULSE_METRICS_API_KEY` | _(empty)_ | LiteLLM API key for authenticated `/metrics` endpoints. Only needed if your LiteLLM proxy has [`require_auth_for_metrics_endpoint`](https://docs.litellm.ai/docs/proxy/prometheus#add-authentication-on-metrics-endpoint) set to `true`. |
+
+> **When to use `LITELLM_PULSE_METRICS_API_KEY`:** If your LiteLLM proxy config includes `require_auth_for_metrics_endpoint: true` under `litellm_settings`, the `/metrics` endpoint requires authentication via a `Bearer` token. Set `LITELLM_PULSE_METRICS_API_KEY` to a valid LiteLLM API key so LiteLLM Pulse can authenticate. If this variable is left empty (the default), no `Authorization` header is sent — matching the default unauthenticated LiteLLM behavior.
 
 ### SQLite / Time-Series Settings
 
@@ -373,13 +399,15 @@ When PRs with conventional commit titles are merged to `main`:
 ### Setup
 
 ```bash
-uv sync                    # install all deps including dev tools
+make venv                  # sync deps + install pre-commit hooks
+# or: uv sync --all-extras --all-groups --frozen && uv run pre-commit install
 ```
 
 ### Running
 
 ```bash
 uv run litellm-pulse       # run the server locally
+# or: make run
 ```
 
 ### Linting & Formatting
@@ -397,7 +425,11 @@ This runs `ruff check --fix` and `ruff format` across the codebase. The same che
 
 ```bash
 uv run pytest -v           # run tests
+# or: make tests           # runs pytest
+# or: make coverage        # serve HTML coverage report at http://localhost:8080
 ```
+
+> Run `make help` to see all available targets.
 
 ### CI/CD
 
@@ -418,6 +450,7 @@ services:
     restart: unless-stopped
     environment:
       LITELLM_PULSE_METRICS_URL: "http://litellm:4000/metrics/"
+      # LITELLM_PULSE_METRICS_API_KEY: "sk-your-litellm-api-key"
     ports:
       - "8000:8000"
     volumes:
@@ -430,3 +463,11 @@ volumes:
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Disclaimer
+
+LiteLLM Pulse is an independent, community-developed project created to provide monitoring and analytics for LiteLLM deployments.
+
+This project is **not affiliated with, endorsed by, sponsored by, or maintained by** LiteLLM or Berri AI.
+
+"LiteLLM" and any associated trademarks, service marks, logos, or trade names are the property of their respective owners and are used here solely to identify compatibility with the LiteLLM ecosystem.
