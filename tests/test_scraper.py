@@ -1,6 +1,7 @@
 """Tests for the scraper auth mechanism."""
 
 import asyncio
+import time
 from contextlib import suppress
 
 import pytest
@@ -45,6 +46,9 @@ def scraper_state():
     original_db = app_module._db
     original_history = app_module._history
 
+    app_module._db = None
+    app_module._history = None
+
     yield
 
     app_module._raw_metrics = original_raw
@@ -73,6 +77,13 @@ class TestBuildAuthHeaders:
 
 
 class TestScraperAuthIntegration:
+    async def _wait_for_request(self, httpx_mock, timeout=5.0):
+        deadline = time.monotonic() + timeout
+        while len(httpx_mock.get_requests()) < 1:
+            if time.monotonic() > deadline:
+                break
+            await asyncio.sleep(0.01)
+
     @pytest.mark.asyncio
     async def test_scraper_loop_sends_auth_header(self, monkeypatch, httpx_mock, scraper_state):
         monkeypatch.setattr(app_module, "METRICS_API_KEY", "sk-test-key")
@@ -81,7 +92,7 @@ class TestScraperAuthIntegration:
         httpx_mock.add_response(url=app_module.METRICS_URL, text=SAMPLE_METRICS)
 
         task = asyncio.create_task(app_module._scraper_loop())
-        await asyncio.sleep(0.1)
+        await self._wait_for_request(httpx_mock)
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
@@ -98,7 +109,7 @@ class TestScraperAuthIntegration:
         httpx_mock.add_response(url=app_module.METRICS_URL, text=SAMPLE_METRICS)
 
         task = asyncio.create_task(app_module._scraper_loop())
-        await asyncio.sleep(0.1)
+        await self._wait_for_request(httpx_mock)
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
@@ -118,7 +129,7 @@ class TestScraperAuthIntegration:
         )
 
         task = asyncio.create_task(app_module._scraper_loop())
-        await asyncio.sleep(0.1)
+        await self._wait_for_request(httpx_mock)
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task

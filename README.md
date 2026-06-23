@@ -425,7 +425,7 @@ This runs `ruff check --fix` and `ruff format` across the codebase. The same che
 
 ```bash
 uv run pytest -v           # run tests
-# or: make tests           # runs pytest with parallel execution
+# or: make tests           # runs pytest
 # or: make coverage        # serve HTML coverage report at http://localhost:8080
 ```
 

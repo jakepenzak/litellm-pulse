@@ -186,7 +186,7 @@ async def _scrape(client: httpx.AsyncClient) -> None:
 
 def _build_auth_headers() -> dict[str, str] | None:
     if METRICS_API_KEY and METRICS_API_KEY.strip():
-        return {"Authorization": f"Bearer {METRICS_API_KEY}"}
+        return {"Authorization": f"Bearer {METRICS_API_KEY.strip()}"}
     return None
 
 
