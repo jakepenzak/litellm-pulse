@@ -62,8 +62,7 @@ jobs:
       contents: read
       pull-requests: write
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request_review' || github.event.review.state == 'approved'
-    steps:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
       - uses: grafana/pr-labeler-action@50737759cb150f5d312de1a45559027156db8bab
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
