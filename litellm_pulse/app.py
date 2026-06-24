@@ -255,7 +255,7 @@ async def lifespan(_app: FastAPI):
         METRICS_URL,
         SCRAPE_INTERVAL,
         DB_PATH if _db else "disabled",
-        _tz_name,
+        str(_TZ),
         "enabled" if METRICS_API_KEY and METRICS_API_KEY.strip() else "disabled",
     )
     yield
@@ -354,7 +354,7 @@ async def history(limit: int = 168):
         }
     if _history is not None:
         snapshots = []
-        for entry in _history:
+        for entry in list(_history)[-limit:]:
             out = {k: v for k, v in entry.items() if k != "ts"}
             out["timestamp"] = _format_ts(entry["ts"])
             snapshots.append(out)
