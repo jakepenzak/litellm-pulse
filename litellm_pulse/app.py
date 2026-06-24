@@ -90,16 +90,11 @@ _db: Any = None  # sqlite3.Connection
 
 
 def _detect_reset(prev: dict[str, float], curr: dict[str, float]) -> bool:
-    """Return True if any tracked counter appears to have reset (dropped >50%)."""
-    if not prev:
-        return False
-    for key in METRIC_MAP:
-        prom_name = METRIC_MAP[key]
-        old_val = prev.get(prom_name)
-        new_val = curr.get(prom_name)
-        if old_val is not None and new_val is not None and old_val > 0 and new_val < old_val * 0.5:
-            return True
-    return False
+    """Return True if the primary requests counter appears to have reset (dropped >50%)."""
+    prom_name = METRIC_MAP["requests"]
+    old_val = prev.get(prom_name, 0.0)
+    new_val = curr.get(prom_name, 0.0)
+    return old_val > 0 and new_val < old_val * 0.5
 
 
 def _compute_deltas(
