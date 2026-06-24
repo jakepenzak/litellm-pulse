@@ -159,6 +159,9 @@ async def _scrape(client: httpx.AsyncClient) -> None:
         is_reset = _detect_reset(_previous_raw, _raw_metrics)
         deltas = _compute_deltas(_previous_raw, _raw_metrics, is_reset)
 
+        if not _previous_raw:
+            deltas = {k: 0.0 for k in METRIC_MAP}
+
         if is_reset:
             logger.warning("Counter reset detected — treating as fresh LiteLLM session")
 
