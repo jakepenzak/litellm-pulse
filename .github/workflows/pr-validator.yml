@@ -45,7 +45,7 @@ jobs:
 
             `litellm-pulse` follows [Conventional Commit format](https://www.conventionalcommits.org/en/v1.0.0/) for PR titles.
 
-            Please update your PR title and description to match the specification.
+            Please update your PR title to match the specification.
 
             Test out your PR title [here](https://regex101.com/r/6c1agb/1).
 
