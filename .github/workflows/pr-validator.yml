@@ -47,9 +47,9 @@ jobs:
 
             Please update your PR title to match the specification.
 
-            Test out your PR title [here](https://regex101.com/r/6c1agb/1).
+            Test out your PR title [here](https://regex101.com/?regex=%5E%28build%7Cchore%7Cci%7Cdocs%7Cfeat%7Cfix%7Cperf%7Crefactor%7Crevert%7Cstyle%7Ctest%7Crelease%29%28%5C%28.%2B%5C%29%29%3F%21%3F%3A%5C+.%2B&testString=fix%28atest._-%29%21%3A+This.-+_+is+a+..+test%0A&flags=s&flavor=java&delimiter=%22).
 
-            For the list of acceptable prefixes & examples, see [contributing docs](https://caml-docs.com/05_Contributors/conventional_commits.html).
+            For the list of acceptable prefixes & examples, see [README.md](https://github.com/jakepenzak/litellm-pulse/blob/main/README.md).
 
             The current PR title is: `${{ env.PR_TITLE }}`
 
@@ -63,6 +63,7 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-latest
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
       - uses: grafana/pr-labeler-action@50737759cb150f5d312de1a45559027156db8bab
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
