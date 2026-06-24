@@ -4,6 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/jakepenzak/litellm-pulse/releases"><img src="https://img.shields.io/github/v/release/jakepenzak/litellm-pulse" alt="GitHub release"></a>
+  <a href="https://pypi.org/project/litellm-pulse/"><img src="https://img.shields.io/pypi/v/litellm-pulse" alt="PyPI version"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-blue" alt="Python 3.11+"></a>
   <a href="https://github.com/jakepenzak/litellm-pulse/blob/main/LICENSE"><img src="https://img.shields.io/github/license/jakepenzak/litellm-pulse" alt="License: MIT"></a>
   <a href="https://github.com/jakepenzak/litellm-pulse"><img src="https://img.shields.io/badge/status-beta-yellow" alt="Development Status"></a>
@@ -85,11 +86,32 @@ volumes:
   litellm-pulse-data:
 ```
 
+### Docker Run
+
+```bash
+docker run -d \
+  --name litellm-pulse \
+  -p 8000:8000 \
+  -e LITELLM_PULSE_METRICS_URL=http://litellm:4000/metrics/ \
+  -e LITELLM_PULSE_SCRAPE_INTERVAL=60 \
+  -e LITELLM_PULSE_TIMEZONE=America/New_York \
+  -v litellm-pulse-data:/app/data \
+  ghcr.io/jakepenzak/litellm-pulse:latest
+```
+
 ### Running Locally (with uv)
 
 ```bash
 uv sync
 uv run litellm-pulse
+```
+
+### Running from PyPI
+
+```bash
+uvx litellm-pulse                                # run directly
+uv tool install litellm-pulse && litellm-pulse   # install permanently
+pip install litellm-pulse && litellm-pulse       # with pip
 ```
 
 ## Configuration
@@ -503,29 +525,7 @@ uv run pytest -v           # run tests
 | Workflow | Trigger | What it does |
 |---|---|---|
 | **CI** ([ci.yml](.github/workflows/ci.yml)) | Push to `main`, PRs | Runs pre-commit (ruff lint + format) and pytest on Python 3.11 & 3.12 |
-| **Release** ([release.yml](.github/workflows/release.yml)) |  Push to `main` | Runs `release-please` suite. On releases created via `release-please`, builds Docker image and publishes to `ghcr.io/jakepenzak/litellm-pulse` with semantic version tags |
-
-### Using the Pre-built Docker Image
-
-Once a release is published, the image is available on GHCR:
-
-```yaml
-services:
-  litellm-pulse:
-    image: ghcr.io/jakepenzak/litellm-pulse:latest
-    container_name: litellm-pulse
-    restart: unless-stopped
-    environment:
-      LITELLM_PULSE_METRICS_URL: "http://litellm:4000/metrics/"
-      # LITELLM_PULSE_METRICS_API_KEY: "sk-your-litellm-api-key"
-    ports:
-      - "8000:8000"
-    volumes:
-      - litellm-pulse-data:/app/data
-
-volumes:
-  litellm-pulse-data:
-```
+| **Release** ([release.yml](.github/workflows/release.yml)) |  Push to `main` | Runs `release-please` suite. On releases created via `release-please`, builds Docker image and publishes to `ghcr.io/jakepenzak/litellm-pulse` with semantic version tags, and publishes the package to PyPI |
 
 ## License
 
