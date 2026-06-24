@@ -30,7 +30,7 @@ jobs:
         run: uv sync --dev
 
       - name: Run pre-commit
-        run: pre-commit run --all-files
+        run: uv run pre-commit run --all-files
 
   test:
     name: Test
