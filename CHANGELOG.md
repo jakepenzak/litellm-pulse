@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/jakepenzak/litellm-pulse/compare/v0.2.0...v0.2.1) (2026-06-24)
+
+
+### 🐛 Bug Fixes
+
+* fragible db reset logic ([#14](https://github.com/jakepenzak/litellm-pulse/issues/14)) ([47fd756](https://github.com/jakepenzak/litellm-pulse/commit/47fd756c2101b88f72dda3f7b47306586c3875ef))
+
 ## [0.2.0](https://github.com/jakepenzak/litellm-pulse/compare/v0.1.0...v0.2.0) (2026-06-24)
 
 
