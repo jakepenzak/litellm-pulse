@@ -20,12 +20,15 @@ from .db import (
     METRIC_KEYS,
     get_history,
     get_latest,
+    get_latest_model_metrics,
+    get_model_window_aggregate,
     get_window_aggregate,
     open_db,
     purge_old,
+    store_model_snapshots,
     store_snapshot,
 )
-from .parser import parse_prometheus_text
+from .parser import parse_prometheus_text, parse_prometheus_text_with_labels
 
 logger = logging.getLogger("litellm-pulse")
 
@@ -66,11 +69,29 @@ DEFAULT_METRIC_MAP = {
     "reasoning_tokens": "litellm_output_reasoning_tokens_metric_total",
     "cost": "litellm_spend_metric_total",
     "in_flight_requests": "litellm_in_flight_requests",
+    "cache_hits": "litellm_cache_hits_metric_total",
+    "cache_misses": "litellm_cache_misses_metric_total",
+    "cached_tokens": "litellm_cached_tokens_metric_total",
+    "input_cached_tokens": "litellm_input_cached_tokens_metric_total",
+    "input_cache_creation_tokens": "litellm_input_cache_creation_tokens_metric_total",
 }
 
 METRIC_MAP: dict[str, str] = {}
 for _friendly, _prom in DEFAULT_METRIC_MAP.items():
     METRIC_MAP[_friendly] = os.environ.get(f"LITELLM_PULSE_METRIC_{_friendly.upper()}", _prom)
+
+# Per-model tracking: maps Prometheus metric names to friendly names for
+# metrics that carry a ``model`` label.  Includes everything from METRIC_MAP
+# plus deployment-specific metrics that are only useful per-model.
+_MODEL_EXTRA_METRICS: dict[str, str] = {
+    "litellm_deployment_total_requests_total": "deployment_requests",
+    "litellm_deployment_success_responses_total": "deployment_success",
+    "litellm_deployment_failure_responses_total": "deployment_failures",
+}
+
+# Reverse mapping: Prometheus name → friendly name (for per-model tracking).
+_PROM_TO_FRIENDLY: dict[str, str] = {v: k for k, v in METRIC_MAP.items()}
+_PROM_TO_FRIENDLY.update(_MODEL_EXTRA_METRICS)
 
 # ---------------------------------------------------------------------------
 # State
@@ -82,6 +103,10 @@ _last_scrape: datetime | None = None
 _last_error: str | None = None
 _history: deque[dict[str, Any]] = deque(maxlen=HISTORY_SIZE) if HISTORY_SIZE > 0 else None
 _db: Any = None  # sqlite3.Connection
+
+# Per-model state: {friendly_metric: {model_name: raw_value}}
+_raw_model_metrics: dict[str, dict[str, float]] = {}
+_previous_raw_model_metrics: dict[str, dict[str, float]] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +138,36 @@ def _compute_deltas(
             deltas[friendly] = curr_val
         else:
             deltas[friendly] = curr_val - prev.get(prom_name, 0.0)
+    return deltas
+
+
+def _map_model_metrics(labeled: dict[str, dict[str, float]]) -> dict[str, dict[str, float]]:
+    """Convert Prometheus metric names to friendly names in labeled data.
+
+    Metrics without a known mapping keep their raw Prometheus name.
+    """
+    result: dict[str, dict[str, float]] = {}
+    for prom_name, models in labeled.items():
+        friendly = _PROM_TO_FRIENDLY.get(prom_name, prom_name)
+        result[friendly] = dict(models)
+    return result
+
+
+def _compute_model_deltas(
+    prev: dict[str, dict[str, float]],
+    curr: dict[str, dict[str, float]],
+    is_reset: bool,
+) -> dict[str, dict[str, float]]:
+    """Compute per-model deltas. On reset, each delta is the current value."""
+    deltas: dict[str, dict[str, float]] = {}
+    for metric, models in curr.items():
+        deltas[metric] = {}
+        prev_models = prev.get(metric, {})
+        for model, value in models.items():
+            if is_reset:
+                deltas[metric][model] = value
+            else:
+                deltas[metric][model] = value - prev_models.get(model, 0.0)
     return deltas
 
 
@@ -152,17 +207,25 @@ def _start_of_month() -> int:
 
 async def _scrape(client: httpx.AsyncClient) -> None:
     global _raw_metrics, _previous_raw, _last_scrape, _last_error
+    global _raw_model_metrics, _previous_raw_model_metrics
 
     try:
         resp = await client.get(METRICS_URL, timeout=SCRAPE_TIMEOUT)
         resp.raise_for_status()
         _raw_metrics = parse_prometheus_text(resp.text)
+
+        labeled = parse_prometheus_text_with_labels(resp.text)
+        _raw_model_metrics = _map_model_metrics(labeled)
+
         now = datetime.now(UTC)
         _last_scrape = now
         _last_error = None
 
         is_reset = _detect_reset(_previous_raw, _raw_metrics)
         deltas = _compute_deltas(_previous_raw, _raw_metrics, is_reset)
+        model_deltas = _compute_model_deltas(
+            _previous_raw_model_metrics, _raw_model_metrics, is_reset
+        )
 
         if is_reset:
             logger.warning("Counter reset detected — treating as fresh LiteLLM session")
@@ -174,6 +237,8 @@ async def _scrape(client: httpx.AsyncClient) -> None:
                 for friendly, prom_name in METRIC_MAP.items()
             }
             store_snapshot(_db, ts, raw_by_friendly, deltas, is_reset)
+            if _raw_model_metrics:
+                store_model_snapshots(_db, ts, _raw_model_metrics, model_deltas, is_reset)
 
         if _history is not None:
             entry: dict[str, Any] = {
@@ -187,11 +252,15 @@ async def _scrape(client: httpx.AsyncClient) -> None:
             _history.append(entry)
 
         _previous_raw = dict(_raw_metrics)
+        _previous_raw_model_metrics = {
+            metric: dict(models) for metric, models in _raw_model_metrics.items()
+        }
 
         logger.debug(
-            "Scraped %s — %d metric families, reset=%s",
+            "Scraped %s — %d metric families, %d per-model metrics, reset=%s",
             METRICS_URL,
             len(_raw_metrics),
+            len(_raw_model_metrics),
             is_reset,
         )
 
@@ -230,7 +299,7 @@ async def _purge_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    global _db, _previous_raw
+    global _db, _previous_raw, _previous_raw_model_metrics
     logging.basicConfig(
         level=LOG_LEVEL,
         format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
@@ -244,6 +313,15 @@ async def lifespan(_app: FastAPI):
             logger.info("Recovered state from DB — %d metrics loaded", len(_previous_raw))
         else:
             logger.info("DB empty — starting fresh")
+
+        latest_model = get_latest_model_metrics(_db)
+        if latest_model:
+            _previous_raw_model_metrics = latest_model
+            logger.info(
+                "Recovered per-model state from DB — %d metrics, %d models",
+                len(latest_model),
+                len({m for models in latest_model.values() for m in models}),
+            )
     except Exception as exc:
         logger.error("Failed to open DB: %s — continuing without persistence", exc)
         _db = None
@@ -302,6 +380,41 @@ def _summary() -> dict:
     if _last_error:
         data["error"] = _last_error
     return data
+
+
+def _model_summary() -> dict:
+    """Build per-model metrics summary with cumulative + window aggregates."""
+    if _db is not None:
+        latest_raw = get_latest_model_metrics(_db)
+        daily = get_model_window_aggregate(_db, _start_of_day())
+        weekly = get_model_window_aggregate(_db, _start_of_week())
+        monthly = get_model_window_aggregate(_db, _start_of_month())
+    else:
+        latest_raw = _raw_model_metrics
+        daily = weekly = monthly = {}
+
+    all_models: set[str] = set()
+    for model_map in latest_raw.values():
+        all_models.update(model_map.keys())
+    all_models.update(daily.keys(), weekly.keys(), monthly.keys())
+
+    models: list[dict[str, Any]] = []
+    for model in sorted(all_models):
+        entry: dict[str, Any] = {"model": model}
+        for metric, model_vals in latest_raw.items():
+            entry[metric] = model_vals.get(model, 0.0)
+        for metric, val in daily.get(model, {}).items():
+            entry[f"{metric}_daily"] = val
+        for metric, val in weekly.get(model, {}).items():
+            entry[f"{metric}_weekly"] = val
+        for metric, val in monthly.get(model, {}).items():
+            entry[f"{metric}_monthly"] = val
+        models.append(entry)
+
+    return {
+        "models": models,
+        "last_scrape": _format_ts(_last_scrape.timestamp()) if _last_scrape else None,
+    }
 
 
 @app.get("/")
@@ -364,6 +477,11 @@ async def history(limit: int = 168):
             "source": "memory",
         }
     return {"snapshots": [], "count": 0, "source": "disabled"}
+
+
+@app.get("/api/v1/models")
+async def model_metrics():
+    return _model_summary()
 
 
 @app.get("/raw")

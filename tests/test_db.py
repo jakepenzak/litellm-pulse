@@ -1,5 +1,6 @@
 """Tests for the SQLite time-series storage module."""
 
+import sqlite3
 import time
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
@@ -10,10 +11,13 @@ from litellm_pulse.db import (
     METRIC_KEYS,
     get_history,
     get_latest,
+    get_latest_model_metrics,
     get_latest_ts,
+    get_model_window_aggregate,
     get_window_aggregate,
     open_db,
     purge_old,
+    store_model_snapshots,
     store_snapshot,
 )
 
@@ -59,6 +63,55 @@ class TestOpenDb:
     def test_wal_mode(self, db):
         mode = db.execute("PRAGMA journal_mode").fetchone()
         assert mode[0].lower() == "wal"
+
+
+class TestModelSnapshotsTable:
+    def test_creates_model_snapshots_table(self, db):
+        tables = db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        names = [t["name"] for t in tables]
+        assert "model_snapshots" in names
+
+    def test_creates_model_snapshots_indexes(self, db):
+        indexes = db.execute("SELECT name FROM sqlite_master WHERE type='index'").fetchall()
+        names = [i["name"] for i in indexes]
+        assert "idx_model_snapshots_ts" in names
+        assert "idx_model_snapshots_model_metric" in names
+
+
+class TestColumnMigration:
+    def test_adds_missing_columns_to_existing_db(self, tmp_path):
+        from litellm_pulse.db import _migrate_scrapes_columns
+
+        db_path = str(tmp_path / "old.db")
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        conn.execute(
+            "CREATE TABLE scrapes ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "ts INTEGER NOT NULL, "
+            "is_reset INTEGER DEFAULT 0, "
+            "raw_requests REAL DEFAULT 0, "
+            "delta_requests REAL DEFAULT 0)"
+        )
+        conn.commit()
+
+        _migrate_scrapes_columns(conn)
+
+        cols = {row["name"] for row in conn.execute("PRAGMA table_info(scrapes)").fetchall()}
+        assert "raw_cache_hits" in cols
+        assert "delta_cache_hits" in cols
+        assert "raw_cached_tokens" in cols
+        assert "delta_cached_tokens" in cols
+        conn.close()
+
+    def test_idempotent_on_new_db(self, db):
+        from litellm_pulse.db import _migrate_scrapes_columns
+
+        _migrate_scrapes_columns(db)
+
+        cols = {row["name"] for row in db.execute("PRAGMA table_info(scrapes)").fetchall()}
+        assert "raw_cache_hits" in cols
+        assert "delta_cache_misses" in cols
 
 
 class TestStoreAndGetLatest:
@@ -221,3 +274,80 @@ class TestGetHistoryTimezone:
         # UTC 12:00 in June (EDT, UTC-4) is 08:00 local
         assert "08:00:00" in history[0]["timestamp"]
         assert "-04:00" in history[0]["timestamp"]
+
+
+class TestModelSnapshots:
+    def test_store_and_get_latest(self, db):
+        raw = {"requests": {"gpt-4o": 100.0, "claude": 50.0}, "cost": {"gpt-4o": 1.5}}
+        deltas = {"requests": {"gpt-4o": 10.0, "claude": 5.0}, "cost": {"gpt-4o": 0.2}}
+        store_model_snapshots(db, 1000, raw, deltas, is_reset=False)
+
+        result = get_latest_model_metrics(db)
+        assert result["requests"]["gpt-4o"] == 100.0
+        assert result["requests"]["claude"] == 50.0
+        assert result["cost"]["gpt-4o"] == 1.5
+
+    def test_get_latest_empty_db(self, db):
+        assert get_latest_model_metrics(db) == {}
+
+    def test_get_latest_returns_most_recent(self, db):
+        store_model_snapshots(
+            db, 1000, {"requests": {"gpt-4o": 10}}, {"requests": {"gpt-4o": 1}}, False
+        )
+        store_model_snapshots(
+            db, 2000, {"requests": {"gpt-4o": 20}}, {"requests": {"gpt-4o": 5}}, False
+        )
+
+        result = get_latest_model_metrics(db)
+        assert result["requests"]["gpt-4o"] == 20.0
+
+    def test_window_aggregate(self, db):
+        raw1 = {"requests": {"gpt-4o": 100}, "cost": {"gpt-4o": 1.0}}
+        deltas1 = {"requests": {"gpt-4o": 10}, "cost": {"gpt-4o": 0.5}}
+        raw2 = {"requests": {"gpt-4o": 120, "claude": 50}, "cost": {"gpt-4o": 1.5, "claude": 0.3}}
+        deltas2 = {"requests": {"gpt-4o": 20, "claude": 50}, "cost": {"gpt-4o": 0.5, "claude": 0.3}}
+
+        store_model_snapshots(db, 1000, raw1, deltas1, False)
+        store_model_snapshots(db, 2000, raw2, deltas2, False)
+
+        result = get_model_window_aggregate(db, start_ts=1000)
+        assert result["gpt-4o"]["requests"] == 30.0
+        assert result["gpt-4o"]["cost"] == 1.0
+        assert result["claude"]["requests"] == 50.0
+        assert result["claude"]["cost"] == 0.3
+
+    def test_window_aggregate_excludes_before(self, db):
+        store_model_snapshots(
+            db, 500, {"requests": {"gpt-4o": 10}}, {"requests": {"gpt-4o": 100}}, False
+        )
+        store_model_snapshots(
+            db, 2000, {"requests": {"gpt-4o": 20}}, {"requests": {"gpt-4o": 10}}, False
+        )
+
+        result = get_model_window_aggregate(db, start_ts=1000)
+        assert result["gpt-4o"]["requests"] == 10.0
+
+    def test_window_aggregate_empty_db(self, db):
+        result = get_model_window_aggregate(db, start_ts=1000)
+        assert result == {}
+
+    def test_purge_deletes_model_snapshots(self, db):
+        store_model_snapshots(
+            db,
+            int(__import__("time").time()) - 86400 * 10,
+            {"requests": {"gpt-4o": 10}},
+            {"requests": {"gpt-4o": 1}},
+            False,
+        )
+        store_model_snapshots(
+            db,
+            int(__import__("time").time()) - 3600,
+            {"requests": {"gpt-4o": 20}},
+            {"requests": {"gpt-4o": 2}},
+            False,
+        )
+
+        deleted = purge_old(db, retention_days=7)
+        assert deleted >= 1
+        result = get_latest_model_metrics(db)
+        assert result["requests"]["gpt-4o"] == 20.0

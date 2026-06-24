@@ -19,6 +19,8 @@ def client_setup():
     original_last_error = app_module._last_error
     original_db = app_module._db
     original_history = app_module._history
+    original_raw_model = app_module._raw_model_metrics.copy()
+    original_prev_model = app_module._previous_raw_model_metrics.copy()
 
     app_module._raw_metrics = {
         "litellm_proxy_total_requests_metric_total": 100.0,
@@ -29,6 +31,16 @@ def client_setup():
         "litellm_output_reasoning_tokens_metric_total": 0.0,
         "litellm_spend_metric_total": 2.50,
         "litellm_in_flight_requests": 3.0,
+        "litellm_cache_hits_metric_total": 40.0,
+        "litellm_cache_misses_metric_total": 60.0,
+        "litellm_cached_tokens_metric_total": 15000.0,
+        "litellm_input_cached_tokens_metric_total": 8000.0,
+        "litellm_input_cache_creation_tokens_metric_total": 2000.0,
+    }
+    app_module._raw_model_metrics = {
+        "requests": {"gpt-4o": 80.0, "claude-sonnet": 20.0},
+        "tokens": {"gpt-4o": 40000.0, "claude-sonnet": 10000.0},
+        "cost": {"gpt-4o": 2.0, "claude-sonnet": 0.5},
     }
     app_module._last_scrape = datetime.now(UTC)
     app_module._last_error = None
@@ -42,6 +54,8 @@ def client_setup():
     app_module._last_error = original_last_error
     app_module._db = original_db
     app_module._history = original_history
+    app_module._raw_model_metrics = original_raw_model
+    app_module._previous_raw_model_metrics = original_prev_model
 
 
 @pytest.fixture
@@ -291,3 +305,73 @@ class TestHistoryTimezoneInMemory:
         finally:
             app_module._TZ = original_tz
             app_module._history = original_history
+
+
+class TestModelsEndpoint:
+    @pytest.mark.asyncio
+    async def test_returns_models_from_memory(self, async_client):
+        response = await async_client.get("/api/v1/models")
+        assert response.status_code == 200
+        data = response.json()
+        model_names = [m["model"] for m in data["models"]]
+        assert "gpt-4o" in model_names
+        assert "claude-sonnet" in model_names
+
+    @pytest.mark.asyncio
+    async def test_includes_per_model_metrics(self, async_client):
+        response = await async_client.get("/api/v1/models")
+        data = response.json()
+        gpt4o = next(m for m in data["models"] if m["model"] == "gpt-4o")
+        assert gpt4o["requests"] == 80.0
+        assert gpt4o["tokens"] == 40000.0
+        assert gpt4o["cost"] == 2.0
+
+    @pytest.mark.asyncio
+    async def test_no_db_returns_zero_aggregates(self, async_client):
+        response = await async_client.get("/api/v1/models")
+        data = response.json()
+        gpt4o = next(m for m in data["models"] if m["model"] == "gpt-4o")
+        assert "requests_daily" not in gpt4o or gpt4o.get("requests_daily", 0.0) == 0.0
+
+    @pytest.mark.asyncio
+    async def test_empty_model_metrics(self, async_client):
+        app_module._raw_model_metrics = {}
+        response = await async_client.get("/api/v1/models")
+        data = response.json()
+        assert data["models"] == []
+        assert data["last_scrape"] is not None
+
+    @pytest.mark.asyncio
+    async def test_models_with_db_aggregates(self, async_client):
+        import time
+
+        from litellm_pulse.db import (
+            open_db,
+            store_model_snapshots,
+        )
+
+        db_path = "/tmp/test_models_endpoint.db"
+        import os
+
+        if os.path.exists(db_path):
+            os.remove(db_path)
+        conn = open_db(db_path)
+        app_module._db = conn
+
+        ts = int(time.time())
+        raw = {"requests": {"gpt-4o": 100.0}, "cost": {"gpt-4o": 5.0}}
+        deltas = {"requests": {"gpt-4o": 10.0}, "cost": {"gpt-4o": 0.5}}
+        store_model_snapshots(conn, ts, raw, deltas, is_reset=False)
+
+        try:
+            response = await async_client.get("/api/v1/models")
+            data = response.json()
+            gpt4o = next(m for m in data["models"] if m["model"] == "gpt-4o")
+            assert gpt4o["requests"] == 100.0
+            assert gpt4o["requests_daily"] == 10.0
+            assert gpt4o["cost_daily"] == 0.5
+        finally:
+            conn.close()
+            app_module._db = None
+            if os.path.exists(db_path):
+                os.remove(db_path)

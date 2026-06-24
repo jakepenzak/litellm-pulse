@@ -28,7 +28,7 @@ It is **not** designed to replace Prometheus or Grafana. If you need multi-sourc
 
 LiteLLM exposes usage metrics (requests, tokens, spend) in Prometheus text format as cumulative counters. LiteLLM Pulse scrapes that endpoint on a schedule, parses the metrics, stores snapshots in SQLite, and serves them as clean JSON over a REST API.
 
-Beyond raw cumulative totals, LiteLLM Pulse computes **deltas** (change since last scrape), and **daily/weekly/monthly aggregates** (sum of deltas since the start of the current day/week/month) — all backed by SQLite for persistence across restarts.
+Beyond raw cumulative totals, LiteLLM Pulse computes **deltas** (change since last scrape), and **daily/weekly/monthly aggregates** (sum of deltas since the start of the current day/week/month) — all backed by SQLite for persistence across restarts. It also breaks down all metrics that carry a `model` label **per model**, so you can see which models are being used and how much each costs.
 
 ```
 LiteLLM /metrics  ──scrape──▶  LiteLLM Pulse  ──JSON──▶  Homepage / Home Assistant / anything
@@ -136,6 +136,11 @@ Each tracked metric maps a friendly name to a Prometheus metric name. Override a
 | `LITELLM_PULSE_METRIC_REASONING_TOKENS` | `litellm_output_reasoning_tokens_metric_total` |
 | `LITELLM_PULSE_METRIC_COST` | `litellm_spend_metric_total` |
 | `LITELLM_PULSE_METRIC_IN_FLIGHT_REQUESTS` | `litellm_in_flight_requests` |
+| `LITELLM_PULSE_METRIC_CACHE_HITS` | `litellm_cache_hits_metric_total` |
+| `LITELLM_PULSE_METRIC_CACHE_MISSES` | `litellm_cache_misses_metric_total` |
+| `LITELLM_PULSE_METRIC_CACHED_TOKENS` | `litellm_cached_tokens_metric_total` |
+| `LITELLM_PULSE_METRIC_INPUT_CACHED_TOKENS` | `litellm_input_cached_tokens_metric_total` |
+| `LITELLM_PULSE_METRIC_INPUT_CACHE_CREATION_TOKENS` | `litellm_input_cache_creation_tokens_metric_total` |
 
 ## API Endpoints
 
@@ -153,6 +158,11 @@ Returns all tracked metrics: cumulative totals, daily/weekly/monthly aggregates,
   "reasoning_tokens": 0,
   "cost": 12.345678,
   "in_flight_requests": 2,
+  "cache_hits": 40,
+  "cache_misses": 60,
+  "cached_tokens": 15000,
+  "input_cached_tokens": 8000,
+  "input_cache_creation_tokens": 2000,
   "requests_daily": 215,
   "requests_weekly": 1200,
   "requests_monthly": 3400,
@@ -162,6 +172,9 @@ Returns all tracked metrics: cumulative totals, daily/weekly/monthly aggregates,
   "cost_daily": 0.02,
   "cost_weekly": 0.15,
   "cost_monthly": 0.52,
+  "cache_hits_daily": 5,
+  "cache_misses_daily": 12,
+  "cached_tokens_daily": 3000,
   "last_scrape": "2025-06-21T12:00:00+00:00",
   "source": "http://litellm:4000/metrics/"
 }
@@ -217,6 +230,40 @@ Returns the most recent scrape snapshots as a JSON array (newest last). Draws fr
 }
 ```
 
+### `GET /api/v1/models`
+
+Returns per-model breakdown of all metrics that carry a `model` label in the Prometheus data. Each model includes cumulative totals and daily/weekly/monthly aggregates.
+
+```json
+{
+  "models": [
+    {
+      "model": "gpt-4o",
+      "requests": 800,
+      "tokens": 40000,
+      "cost": 2.0,
+      "deployment_requests": 80,
+      "requests_daily": 50,
+      "tokens_daily": 5000,
+      "cost_daily": 0.15,
+      "deployment_requests_daily": 5
+    },
+    {
+      "model": "claude-sonnet",
+      "requests": 200,
+      "tokens": 10000,
+      "cost": 0.5,
+      "requests_daily": 10,
+      "tokens_daily": 1000,
+      "cost_daily": 0.02
+    }
+  ],
+  "last_scrape": "2025-06-21T12:00:00+00:00"
+}
+```
+
+The set of metrics per model depends on what LiteLLM exposes with `model` labels. Common metrics include `requests`, `tokens`, `input_tokens`, `output_tokens`, `cost`, `cache_hits`, `cache_misses`, `cached_tokens`, `deployment_requests`, `deployment_success`, and `deployment_failures`. Metrics without a known friendly name retain their raw Prometheus metric name.
+
 ### `GET /raw`
 
 Returns all raw parsed Prometheus metrics (every metric family found, summed). Useful for debugging.
@@ -238,10 +285,11 @@ LiteLLM's Prometheus metrics are **counters** — they grow cumulatively and onl
 | Scenario | Behavior |
 |---|---|
 | **Fresh start** | DB empty → first scrape has no deltas, second scrape onward has valid deltas |
-| **App restart** | Reads last row from DB → restores last-known raw counters → seamless continuation |
+| **App restart** | Reads last row from DB → restores last-known raw counters (flat + per-model) → seamless continuation |
 | **LiteLLM restart** | Counters drop → reset detected → delta computed from 0, `is_reset=1` stored → daily sums remain correct |
 | **DB corrupted** | `open_db()` catches SQLite errors, starts fresh with a warning log |
 | **Disk full** | Writes fail → `error` field set in API response → recovers when disk space returns |
+| **DB schema upgrade** | New columns auto-added to existing `scrapes` table via `ALTER TABLE` migration |
 
 ## Integrations
 
@@ -272,6 +320,9 @@ Add a service entry in `services.yaml` with a `customapi` widget:
           prefix: "$"
         - field: tokens_daily
           label: Tokens Today
+          format: number
+        - field: cache_hits_daily
+          label: Cache Hits Today
           format: number
 ```
 
@@ -317,6 +368,18 @@ rest:
       - name: LiteLLM Tokens Today
         unique_id: litellm_tokens_today
         value_template: "{{ value_json.tokens_daily }}"
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        force_update: true
+      - name: LiteLLM Cache Hits Today
+        unique_id: litellm_cache_hits_today
+        value_template: "{{ value_json.cache_hits_daily }}"
+        unit_of_measurement: "hits"
+        state_class: measurement
+        force_update: true
+      - name: LiteLLM Cached Tokens Today
+        unique_id: litellm_cached_tokens_today
+        value_template: "{{ value_json.cached_tokens_daily }}"
         unit_of_measurement: "tokens"
         state_class: measurement
         force_update: true
