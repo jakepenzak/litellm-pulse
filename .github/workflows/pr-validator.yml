@@ -15,8 +15,13 @@ jobs:
     steps:
       - name: Get PR Title
         id: pr_title
-        run: echo "PR_TITLE=$PR_TITLE_RAW" >> $GITHUB_ENV
         shell: bash
+        run: |
+          {
+            echo 'PR_TITLE<<EOF'
+            echo "$PR_TITLE_RAW"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
 
       - name: Validate PR Title
         id: validate_pr_title
