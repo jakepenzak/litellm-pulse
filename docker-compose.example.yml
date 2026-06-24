@@ -16,6 +16,7 @@ services:
       # LITELLM_PULSE_METRIC_REQUESTS: "litellm_proxy_total_requests_metric_total"
       # LITELLM_PULSE_METRIC_TOKENS: "litellm_total_tokens_metric_total"
       # LITELLM_PULSE_METRIC_COST: "litellm_spend_metric_total"
+      # LITELLM_PULSE_METRICS_API_KEY: "sk-your-litellm-api-key"
     ports:
       - "8000:8000"
     volumes:

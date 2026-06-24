@@ -43,6 +43,7 @@ LOG_LEVEL = os.environ.get("LITELLM_PULSE_LOG_LEVEL", "info").upper()
 DB_PATH = os.environ.get("LITELLM_PULSE_DB_PATH", "./data/litellm_pulse.db")
 DB_RETENTION_DAYS = int(os.environ.get("LITELLM_PULSE_DB_RETENTION_DAYS", "90"))
 HISTORY_SIZE = int(os.environ.get("LITELLM_PULSE_HISTORY_SIZE", "168"))
+METRICS_API_KEY = os.environ.get("LITELLM_PULSE_METRICS_API_KEY", "")
 
 # Timezone for API output and window boundaries. DB always stores UTC.
 _TZ: tzinfo = UTC
@@ -199,8 +200,14 @@ async def _scrape(client: httpx.AsyncClient) -> None:
         logger.warning("Scrape failed: %s", exc)
 
 
+def _build_auth_headers() -> dict[str, str] | None:
+    if METRICS_API_KEY and METRICS_API_KEY.strip():
+        return {"Authorization": f"Bearer {METRICS_API_KEY.strip()}"}
+    return None
+
+
 async def _scraper_loop() -> None:
-    async with httpx.AsyncClient(verify=VERIFY_SSL) as client:
+    async with httpx.AsyncClient(verify=VERIFY_SSL, headers=_build_auth_headers()) as client:
         while True:
             await _scrape(client)
             await asyncio.sleep(SCRAPE_INTERVAL)
@@ -244,11 +251,12 @@ async def lifespan(_app: FastAPI):
     scrape_task = asyncio.create_task(_scraper_loop())
     purge_task = asyncio.create_task(_purge_loop())
     logger.info(
-        "LiteLLM Pulse started — scraping %s every %ds, DB: %s, timezone: %s",
+        "LiteLLM Pulse started — scraping %s every %ds, DB: %s, timezone: %s, auth: %s",
         METRICS_URL,
         SCRAPE_INTERVAL,
         DB_PATH if _db else "disabled",
         _tz_name,
+        "enabled" if METRICS_API_KEY and METRICS_API_KEY.strip() else "disabled",
     )
     yield
     scrape_task.cancel()
