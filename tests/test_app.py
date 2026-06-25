@@ -369,3 +369,107 @@ class TestModelsEndpoint:
         finally:
             conn.close()
             app_module._db = None
+
+
+class TestCLI:
+    def test_build_arg_parser_has_all_flags(self):
+        parser = app_module._build_arg_parser()
+        actions = {a.dest for a in parser._actions if a.dest != "help"}
+        expected = {
+            "metrics_url",
+            "scrape_interval",
+            "port",
+            "host",
+            "verify_ssl",
+            "scrape_timeout",
+            "log_level",
+            "db_path",
+            "db_retention_days",
+            "history_size",
+            "metrics_api_key",
+            "timezone",
+        }
+        assert actions == expected
+
+    def test_log_level_lowercase_accepted(self):
+        parser = app_module._build_arg_parser()
+        args = parser.parse_args(["--log-level", "info"])
+        assert args.log_level == "INFO"
+
+    def test_log_level_uppercase_accepted(self):
+        parser = app_module._build_arg_parser()
+        args = parser.parse_args(["--log-level", "INFO"])
+        assert args.log_level == "INFO"
+
+    def test_invalid_log_level_rejected(self):
+        parser = app_module._build_arg_parser()
+        with pytest.raises(SystemExit):
+            parser.parse_args(["--log-level", "invalid"])
+
+    def test_cli_overrides_env_defaults(self, monkeypatch):
+        monkeypatch.setenv("LITELLM_PULSE_PORT", "9999")
+        import importlib
+
+        import litellm_pulse.app as app_mod
+
+        importlib.reload(app_mod)
+
+        original_port = app_mod.PORT
+        assert str(original_port) == "9999"
+
+        parser = app_mod._build_arg_parser()
+        args = parser.parse_args(["--port", "7777"])
+        assert str(args.port) == "7777"
+
+        monkeypatch.delenv("LITELLM_PULSE_PORT", raising=False)
+
+    def test_main_applies_cli_values(self, monkeypatch):
+        monkeypatch.setenv("LITELLM_PULSE_PORT", "9999")
+        import importlib
+
+        import litellm_pulse.app as app_mod
+
+        importlib.reload(app_mod)
+
+        with monkeypatch.context() as m:
+            m.setattr("uvicorn.run", lambda *a, **kw: None)
+            app_mod.main(["--port", "7777", "--log-level", "debug"])
+
+        assert str(app_mod.PORT) == "7777"
+        assert app_mod.LOG_LEVEL == "DEBUG"
+
+        monkeypatch.delenv("LITELLM_PULSE_PORT", raising=False)
+
+    def test_history_size_reenables_buffer_from_none(self, monkeypatch):
+        monkeypatch.setenv("LITELLM_PULSE_HISTORY_SIZE", "0")
+        import importlib
+
+        import litellm_pulse.app as app_mod
+
+        importlib.reload(app_mod)
+
+        assert app_mod._history is None
+
+        with monkeypatch.context() as m:
+            m.setattr("uvicorn.run", lambda *a, **kw: None)
+            app_mod.main(["--history-size", "100"])
+
+        assert app_mod._history is not None
+        assert app_mod._history.maxlen == 100
+
+    def test_history_size_disables_buffer_from_positive(self, monkeypatch):
+        monkeypatch.setenv("LITELLM_PULSE_HISTORY_SIZE", "50")
+        import importlib
+
+        import litellm_pulse.app as app_mod
+
+        importlib.reload(app_mod)
+
+        assert app_mod._history is not None
+        assert app_mod._history.maxlen == 50
+
+        with monkeypatch.context() as m:
+            m.setattr("uvicorn.run", lambda *a, **kw: None)
+            app_mod.main(["--history-size", "0"])
+
+        assert app_mod._history is None

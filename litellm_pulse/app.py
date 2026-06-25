@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import logging
 import os
+import sys
 from collections import deque
 from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime, timedelta, tzinfo
@@ -509,9 +511,124 @@ async def health():
 # ---------------------------------------------------------------------------
 
 
-def main():
+def _build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="litellm-pulse",
+        description="A lightweight metrics exporter for LiteLLM with SQLite time-series storage.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Every option also has an equivalent LITELLM_PULSE_* environment variable. "
+        "CLI arguments take precedence over environment variables.",
+    )
+    parser.add_argument(
+        "--metrics-url",
+        default=METRICS_URL,
+        help="Prometheus metrics endpoint to scrape (env: LITELLM_PULSE_METRICS_URL)",
+    )
+    parser.add_argument(
+        "--scrape-interval",
+        type=int,
+        default=SCRAPE_INTERVAL,
+        help="Seconds between scrapes (env: LITELLM_PULSE_SCRAPE_INTERVAL)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=PORT,
+        help="Port to serve the API on (env: LITELLM_PULSE_PORT)",
+    )
+    parser.add_argument(
+        "--host",
+        default=HOST,
+        help="Address to bind to (env: LITELLM_PULSE_HOST)",
+    )
+    parser.add_argument(
+        "--verify-ssl",
+        action=argparse.BooleanOptionalAction,
+        default=VERIFY_SSL,
+        help="Verify TLS certificates when scraping (env: LITELLM_PULSE_VERIFY_SSL)",
+    )
+    parser.add_argument(
+        "--scrape-timeout",
+        type=float,
+        default=SCRAPE_TIMEOUT,
+        help="Request timeout in seconds (env: LITELLM_PULSE_SCRAPE_TIMEOUT)",
+    )
+    parser.add_argument(
+        "--log-level",
+        default=LOG_LEVEL,
+        type=str.upper,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Log level (env: LITELLM_PULSE_LOG_LEVEL)",
+    )
+    parser.add_argument(
+        "--db-path",
+        default=DB_PATH,
+        help="Path to the SQLite database file (env: LITELLM_PULSE_DB_PATH)",
+    )
+    parser.add_argument(
+        "--db-retention-days",
+        type=int,
+        default=DB_RETENTION_DAYS,
+        help="Auto-purge data older than N days (env: LITELLM_PULSE_DB_RETENTION_DAYS)",
+    )
+    parser.add_argument(
+        "--history-size",
+        type=int,
+        default=HISTORY_SIZE,
+        help="Max snapshots in the in-memory ring buffer (env: LITELLM_PULSE_HISTORY_SIZE)",
+    )
+    parser.add_argument(
+        "--metrics-api-key",
+        default=METRICS_API_KEY,
+        help="LiteLLM API key for authenticated /metrics endpoints "
+        "(env: LITELLM_PULSE_METRICS_API_KEY)",
+    )
+    parser.add_argument(
+        "--timezone",
+        default=_tz_name,
+        help="Timezone for API timestamps and day/week/month boundaries "
+        "(env: LITELLM_PULSE_TIMEZONE)",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None):
+    global METRICS_URL, SCRAPE_INTERVAL, PORT, HOST, VERIFY_SSL, SCRAPE_TIMEOUT
+    global LOG_LEVEL, DB_PATH, DB_RETENTION_DAYS, HISTORY_SIZE, METRICS_API_KEY
+    global _TZ, _tz_name, _history
+
+    parser = _build_arg_parser()
+    args = parser.parse_args(argv)
+
+    METRICS_URL = args.metrics_url
+    SCRAPE_INTERVAL = args.scrape_interval
+    PORT = args.port
+    HOST = args.host
+    VERIFY_SSL = args.verify_ssl
+    SCRAPE_TIMEOUT = args.scrape_timeout
+    LOG_LEVEL = args.log_level
+    DB_PATH = args.db_path
+    DB_RETENTION_DAYS = args.db_retention_days
+    HISTORY_SIZE = args.history_size
+    METRICS_API_KEY = args.metrics_api_key
+
+    _tz_name = args.timezone
+    try:
+        _TZ = ZoneInfo(_tz_name)
+    except ZoneInfoNotFoundError:
+        logger.warning("Unknown timezone %r — falling back to UTC", _tz_name)
+        _TZ = UTC
+    except Exception:
+        logger.exception("Failed to load timezone %r — falling back to UTC", _tz_name)
+        _TZ = UTC
+
+    if _history is not None and _history.maxlen != HISTORY_SIZE:
+        _history = deque(maxlen=HISTORY_SIZE) if HISTORY_SIZE > 0 else None
+    elif _history is None and HISTORY_SIZE > 0:
+        _history = deque(maxlen=HISTORY_SIZE)
+
     uvicorn.run(app, host=HOST, port=PORT, log_level=LOG_LEVEL.lower())
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

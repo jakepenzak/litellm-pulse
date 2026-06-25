@@ -114,35 +114,43 @@ uv tool install litellm-pulse && litellm-pulse   # install permanently
 pip install litellm-pulse && litellm-pulse       # with pip
 ```
 
+All of the above accept CLI arguments:
+
+```bash
+uv run litellm-pulse --port 9000 --metrics-url http://localhost:4000/metrics/ --timezone America/New_York
+```
+
 ## Configuration
 
-All configuration is via environment variables prefixed with `LITELLM_PULSE_`. No config files required.
+All settings can be specified via environment variables prefixed with `LITELLM_PULSE_`, CLI arguments, or both. CLI arguments take precedence over environment variables. No config files required.
+
+Run `litellm-pulse --help` to see all available options.
 
 ### Core Settings
 
-| Variable | Default | Description |
-|---|---|---|
-| `LITELLM_PULSE_METRICS_URL` | `http://litellm:4000/metrics/` | Prometheus metrics endpoint to scrape |
-| `LITELLM_PULSE_SCRAPE_INTERVAL` | `60` | Seconds between scrapes |
-| `LITELLM_PULSE_PORT` | `8000` | Port to serve the API on |
-| `LITELLM_PULSE_HOST` | `0.0.0.0` | Address to bind to |
-| `LITELLM_PULSE_VERIFY_SSL` | `false` | Whether to verify TLS certificates when scraping |
-| `LITELLM_PULSE_SCRAPE_TIMEOUT` | `30` | Request timeout in seconds |
-| `LITELLM_PULSE_LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warning`, `error`) |
-| `LITELLM_PULSE_TIMEZONE` | `UTC` | Timezone for API timestamps and day/week/month boundaries (IANA name, e.g. `America/New_York`) |
-| `LITELLM_PULSE_METRICS_API_KEY` | _(empty)_ | LiteLLM API key for authenticated `/metrics` endpoints. Only needed if your LiteLLM proxy has [`require_auth_for_metrics_endpoint`](https://docs.litellm.ai/docs/proxy/prometheus#add-authentication-on-metrics-endpoint) set to `true`. |
+| CLI Flag | Env Variable | Default | Description |
+|---|---|---|---|
+| `--metrics-url` | `LITELLM_PULSE_METRICS_URL` | `http://litellm:4000/metrics/` | Prometheus metrics endpoint to scrape |
+| `--scrape-interval` | `LITELLM_PULSE_SCRAPE_INTERVAL` | `60` | Seconds between scrapes |
+| `--port` | `LITELLM_PULSE_PORT` | `8000` | Port to serve the API on |
+| `--host` | `LITELLM_PULSE_HOST` | `0.0.0.0` | Address to bind to |
+| `--verify-ssl` / `--no-verify-ssl` | `LITELLM_PULSE_VERIFY_SSL` | `false` | Whether to verify TLS certificates when scraping |
+| `--scrape-timeout` | `LITELLM_PULSE_SCRAPE_TIMEOUT` | `30` | Request timeout in seconds |
+| `--log-level` | `LITELLM_PULSE_LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warning`, `error`) |
+| `--timezone` | `LITELLM_PULSE_TIMEZONE` | `UTC` | Timezone for API timestamps and day/week/month boundaries (IANA name, e.g. `America/New_York`) |
+| `--metrics-api-key` | `LITELLM_PULSE_METRICS_API_KEY` | _(empty)_ | LiteLLM API key for authenticated `/metrics` endpoints. Only needed if your LiteLLM proxy has [`require_auth_for_metrics_endpoint`](https://docs.litellm.ai/docs/proxy/prometheus#add-authentication-on-metrics-endpoint) set to `true`. |
 
-> **When to use `LITELLM_PULSE_METRICS_API_KEY`:** If your LiteLLM proxy config includes `require_auth_for_metrics_endpoint: true` under `litellm_settings`, the `/metrics` endpoint requires authentication via a `Bearer` token. Set `LITELLM_PULSE_METRICS_API_KEY` to a valid LiteLLM API key so LiteLLM Pulse can authenticate. If this variable is left empty (the default), no `Authorization` header is sent — matching the default unauthenticated LiteLLM behavior.
+> **When to use `LITELLM_PULSE_METRICS_API_KEY` / `--metrics-api-key`:** If your LiteLLM proxy config includes `require_auth_for_metrics_endpoint: true` under `litellm_settings`, the `/metrics` endpoint requires authentication via a `Bearer` token. Set `LITELLM_PULSE_METRICS_API_KEY` (or pass `--metrics-api-key`) to a valid LiteLLM API key so LiteLLM Pulse can authenticate. If left empty, no `Authorization` header is sent — matching the default unauthenticated LiteLLM behavior.
 
 ### SQLite / Time-Series Settings
 
-| Variable | Default | Description |
-|---|---|---|
-| `LITELLM_PULSE_DB_PATH` | `./data/litellm_pulse.db` | Path to the SQLite database file |
-| `LITELLM_PULSE_DB_RETENTION_DAYS` | `90` | Auto-purge data older than N days (hourly purge cycle) |
-| `LITELLM_PULSE_HISTORY_SIZE` | `168` | Max snapshots in the in-memory ring buffer (used as fallback if DB is unavailable) |
+| CLI Flag | Env Variable | Default | Description |
+|---|---|---|---|
+| `--db-path` | `LITELLM_PULSE_DB_PATH` | `./data/litellm_pulse.db` | Path to the SQLite database file |
+| `--db-retention-days` | `LITELLM_PULSE_DB_RETENTION_DAYS` | `90` | Auto-purge data older than N days (hourly purge cycle) |
+| `--history-size` | `LITELLM_PULSE_HISTORY_SIZE` | `168` | Max snapshots in the in-memory ring buffer (used as fallback if DB is unavailable) |
 
-> **Timezone note:** The database always stores timestamps as UTC. The `LITELLM_PULSE_TIMEZONE` setting only affects API output (timestamps are converted to the configured timezone) and aggregate window boundaries (daily/weekly/monthly resets are computed against the configured timezone's midnight/Monday/1st). Set it to any valid [IANA timezone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (e.g. `America/New_York`, `Europe/London`). Invalid values fall back to UTC with a warning.
+> **Timezone note:** The database always stores timestamps as UTC. The `LITELLM_PULSE_TIMEZONE` setting (or `--timezone` flag) only affects API output (timestamps are converted to the configured timezone) and aggregate window boundaries (daily/weekly/monthly resets are computed against the configured timezone's midnight/Monday/1st). Set it to any valid [IANA timezone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (e.g. `America/New_York`, `Europe/London`). Invalid values fall back to UTC with a warning.
 
 ### Metric Mappings
 
