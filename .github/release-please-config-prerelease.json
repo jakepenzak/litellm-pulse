@@ -2,6 +2,7 @@
   "release-type": "python",
   "package-name": "litellm-pulse",
   "include-component-in-tag": false,
+  "versioning": "prerelease",
   "prerelease": true,
   "prerelease-type": "dev",
   "pull-request-title-pattern": "prerelease(litellm-pulse): ${version}",
