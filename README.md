@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jakepenzak/litellm-pulse/main/assets/litellm-pulse.svg" alt="LiteLLM Pulse" width="320">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/jakepenzak/litellm-pulse/main/assets/litellm-pulse-dark.svg">
+    <img src="https://raw.githubusercontent.com/jakepenzak/litellm-pulse/main/assets/litellm-pulse.svg" alt="LiteLLM Pulse" width="320">
+  </picture>
 </p>
 
 <p align="center">
