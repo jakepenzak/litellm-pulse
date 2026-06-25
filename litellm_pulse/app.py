@@ -556,6 +556,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--log-level",
         default=LOG_LEVEL,
+        type=str.upper,
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="Log level (env: LITELLM_PULSE_LOG_LEVEL)",
     )
@@ -623,6 +624,8 @@ def main(argv: list[str] | None = None):
 
     if _history is not None and _history.maxlen != HISTORY_SIZE:
         _history = deque(maxlen=HISTORY_SIZE) if HISTORY_SIZE > 0 else None
+    elif _history is None and HISTORY_SIZE > 0:
+        _history = deque(maxlen=HISTORY_SIZE)
 
     uvicorn.run(app, host=HOST, port=PORT, log_level=LOG_LEVEL.lower())
 
