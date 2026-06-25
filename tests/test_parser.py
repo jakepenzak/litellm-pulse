@@ -1,6 +1,6 @@
 """Tests for the Prometheus text format parser."""
 
-from litellm_pulse.parser import parse_prometheus_text
+from litellm_pulse.parser import parse_prometheus_text, parse_prometheus_text_with_labels
 
 
 class TestBasicParsing:
@@ -89,3 +89,69 @@ class TestEdgeCases:
         text = "counter_zero 0\n"
         result = parse_prometheus_text(text)
         assert result == {"counter_zero": 0.0}
+
+
+class TestLabelAwareParsing:
+    def test_extracts_model_label(self):
+        text = (
+            'litellm_total_tokens_metric_total{model="gpt-4o"} 100\n'
+            'litellm_total_tokens_metric_total{model="claude-sonnet"} 200\n'
+        )
+        result = parse_prometheus_text_with_labels(text)
+        assert result == {
+            "litellm_total_tokens_metric_total": {"gpt-4o": 100.0, "claude-sonnet": 200.0}
+        }
+
+    def test_sums_same_model_label(self):
+        text = (
+            'litellm_total_tokens_metric_total{model="gpt-4o",team="alpha"} 100\n'
+            'litellm_total_tokens_metric_total{model="gpt-4o",team="beta"} 50\n'
+        )
+        result = parse_prometheus_text_with_labels(text)
+        assert result == {"litellm_total_tokens_metric_total": {"gpt-4o": 150.0}}
+
+    def test_skips_metrics_without_model_label(self):
+        text = (
+            'litellm_total_tokens_metric_total{model="gpt-4o"} 100\nlitellm_in_flight_requests 5\n'
+        )
+        result = parse_prometheus_text_with_labels(text)
+        assert result == {"litellm_total_tokens_metric_total": {"gpt-4o": 100.0}}
+
+    def test_empty_text(self):
+        assert parse_prometheus_text_with_labels("") == {}
+
+    def test_no_labeled_metrics(self):
+        text = "litellm_in_flight_requests 5\n"
+        assert parse_prometheus_text_with_labels(text) == {}
+
+    def test_custom_label_key(self):
+        text = (
+            'litellm_spend_metric_total{team="alpha"} 1.5\n'
+            'litellm_spend_metric_total{team="beta"} 2.5\n'
+        )
+        result = parse_prometheus_text_with_labels(text, label_key="team")
+        assert result == {"litellm_spend_metric_total": {"alpha": 1.5, "beta": 2.5}}
+
+    def test_multiple_metrics_with_labels(self):
+        text = (
+            'litellm_total_tokens_metric_total{model="gpt-4o"} 100\n'
+            'litellm_spend_metric_total{model="gpt-4o"} 1.5\n'
+            'litellm_total_tokens_metric_total{model="claude"} 200\n'
+        )
+        result = parse_prometheus_text_with_labels(text)
+        assert result["litellm_total_tokens_metric_total"] == {"gpt-4o": 100.0, "claude": 200.0}
+        assert result["litellm_spend_metric_total"] == {"gpt-4o": 1.5}
+
+    def test_comments_skipped(self):
+        text = (
+            "# HELP litellm_total_tokens_metric_total Total tokens\n"
+            "# TYPE litellm_total_tokens_metric_total counter\n"
+            'litellm_total_tokens_metric_total{model="gpt-4o"} 100\n'
+        )
+        result = parse_prometheus_text_with_labels(text)
+        assert result == {"litellm_total_tokens_metric_total": {"gpt-4o": 100.0}}
+
+    def test_scientific_notation(self):
+        text = 'litellm_total_tokens_metric_total{model="gpt-4o"} 1.5e5\n'
+        result = parse_prometheus_text_with_labels(text)
+        assert result == {"litellm_total_tokens_metric_total": {"gpt-4o": 150000.0}}
