@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/jakepenzak/litellm-pulse/compare/v0.2.2...v0.3.0) (2026-06-25)
+
+
+### ✨ Features
+
+* add additional metrics and per-model usage tracking ([#11](https://github.com/jakepenzak/litellm-pulse/issues/11)) ([d9c87c9](https://github.com/jakepenzak/litellm-pulse/commit/d9c87c96935ae89e35928a4b04fbee8ceae1047d))
+* add cli arguments alongside env variables ([#19](https://github.com/jakepenzak/litellm-pulse/issues/19)) ([a96acb2](https://github.com/jakepenzak/litellm-pulse/commit/a96acb2cf846b4caff3d2ce7a55458b50d0c900d))
+
+
+### 🔧 CI/CD
+
+* add support for pre-releases ([#20](https://github.com/jakepenzak/litellm-pulse/issues/20)) ([9b9a7a6](https://github.com/jakepenzak/litellm-pulse/commit/9b9a7a667a226bea2180a3f735d34f7f1abe4a3b))
+
 ## [0.2.2](https://github.com/jakepenzak/litellm-pulse/compare/v0.2.1...v0.2.2) (2026-06-24)
 
 
