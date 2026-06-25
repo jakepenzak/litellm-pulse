@@ -35,12 +35,15 @@ jobs:
           COMMIT_MSG="${{ github.event.head_commit.message }}"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.stable_release }}" = "true" ]; then
             echo "config-file=.github/release-please-config.json" >> "$GITHUB_OUTPUT"
+            echo "manifest-file=.github/.release-please-manifest.json" >> "$GITHUB_OUTPUT"
             echo "is_stable=true" >> "$GITHUB_OUTPUT"
           elif echo "$COMMIT_MSG" | grep -q '^release(litellm-pulse):'; then
             echo "config-file=.github/release-please-config.json" >> "$GITHUB_OUTPUT"
+            echo "manifest-file=.github/.release-please-manifest.json" >> "$GITHUB_OUTPUT"
             echo "is_stable=true" >> "$GITHUB_OUTPUT"
           else
             echo "config-file=.github/release-please-config-prerelease.json" >> "$GITHUB_OUTPUT"
+            echo "manifest-file=.github/.release-please-manifest-prerelease.json" >> "$GITHUB_OUTPUT"
             echo "is_stable=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -48,7 +51,7 @@ jobs:
         id: release-please
         with:
           config-file: ${{ steps.select-config.outputs.config-file }}
-          manifest-file: .github/.release-please-manifest.json
+          manifest-file: ${{ steps.select-config.outputs.manifest-file }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-publish:

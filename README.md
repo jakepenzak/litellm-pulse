@@ -499,7 +499,7 @@ Common scopes: `parser`, `db`, `app`, `ci`, `docker`, `deps`
 
 ### Releases
 
-Releases are managed automatically by [release-please](https://github.com/googleapis/release-please) using the [manifest-driven](https://github.com/googleapis/release-please/blob/main/docs/manifest-releaser.md) approach. Configuration lives in [`.github/release-please-config.json`](.github/release-please-config.json) (stable) and [`.github/release-please-config-prerelease.json`](.github/release-please-config-prerelease.json) (prerelease); version tracking in [`.github/.release-please-manifest.json`](.github/.release-please-manifest.json).
+Releases are managed automatically by [release-please](https://github.com/googleapis/release-please) using the [manifest-driven](https://github.com/googleapis/release-please/blob/main/docs/manifest-releaser.md) approach. Configuration lives in [`.github/release-please-config.json`](.github/release-please-config.json) (stable) and [`.github/release-please-config-prerelease.json`](.github/release-please-config-prerelease.json) (prerelease); version tracking in [`.github/.release-please-manifest.json`](.github/.release-please-manifest.json) (stable) and [`.github/.release-please-manifest-prerelease.json`](.github/.release-please-manifest-prerelease.json) (prerelease). The two manifests are independent so cutting a stable release doesn't reset prerelease version tracking, and vice versa.
 
 **Single-branch model:** everything lives on `main`. The [Release workflow](.github/workflows/release.yml) selects the appropriate config based on the trigger:
 
