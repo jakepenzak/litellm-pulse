@@ -6,6 +6,7 @@
   "prerelease-type": "dev",
   "pull-request-title-pattern": "prerelease(litellm-pulse): ${version}",
   "extra-label": "type: prerelease",
+  "versioning": "prerelease",
   "include-commit-authors": true,
   "changelog-sections": [
     { "type": "feat", "section": "✨ Features", "hidden": false },
