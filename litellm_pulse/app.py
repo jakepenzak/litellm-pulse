@@ -147,12 +147,15 @@ def _compute_deltas(
 def _map_model_metrics(labeled: dict[str, dict[str, float]]) -> dict[str, dict[str, float]]:
     """Convert Prometheus metric names to friendly names in labeled data.
 
-    Metrics without a known mapping keep their raw Prometheus name.
+    Only metrics with a known mapping are kept; unknown Prometheus metrics
+    (e.g. histogram sub-metrics like ``_bucket``/``_count``/``_sum``/``_created``)
+    are dropped to avoid leaking raw metric fields into the model endpoint.
     """
     result: dict[str, dict[str, float]] = {}
     for prom_name, models in labeled.items():
-        friendly = _PROM_TO_FRIENDLY.get(prom_name, prom_name)
-        result[friendly] = dict(models)
+        friendly = _PROM_TO_FRIENDLY.get(prom_name)
+        if friendly is not None:
+            result[friendly] = dict(models)
     return result
 
 
