@@ -114,8 +114,9 @@
     <h2>Cache</h2>
     <div class="cards">
       <div class="card"><span class="label">Cache Hits Today</span><span id="cache_hits_daily" class="value cache">—</span></div>
-      <div class="card"><span class="label">Cached Tokens Today</span><span id="cached_tokens_daily" class="value cache">—</span></div>
       <div class="card"><span class="label">Hit Rate</span><span id="cache_hit_rate" class="value cache">—</span></div>
+      <div class="card"><span class="label">Input Cached Tokens</span><span id="input_cached_tokens" class="value cache">—</span></div>
+      <div class="card"><span class="label">Input Cache %</span><span id="input_cached_pct" class="value cache">—</span></div>
     </div>
   </div>
 
@@ -130,6 +131,7 @@
           <th>Tokens</th>
           <th>Cost (Daily)</th>
           <th>Tokens (Daily)</th>
+          <th>Cache %</th>
         </tr>
       </thead>
       <tbody id="models-body"></tbody>
@@ -182,10 +184,11 @@ async function refresh() {
     document.getElementById('in_flight_requests').textContent = formatNum(d.in_flight_requests);
 
     document.getElementById('cache_hits_daily').textContent = formatNum(d.cache_hits_daily);
-    document.getElementById('cached_tokens_daily').textContent = formatNum(d.cached_tokens_daily);
     const totalCache = (d.cache_hits_daily || 0) + (d.cache_misses_daily || 0);
     const hitRate = totalCache > 0 ? (d.cache_hits_daily / totalCache * 100) : 0;
     document.getElementById('cache_hit_rate').textContent = formatPct(hitRate);
+    document.getElementById('input_cached_tokens').textContent = formatNum(d.input_cached_tokens);
+    document.getElementById('input_cached_pct').textContent = formatPct(d.input_cached_pct_daily);
 
     document.getElementById('source').textContent = d.source || '—';
     document.getElementById('last_scrape').textContent = d.last_scrape || '—';
@@ -211,6 +214,7 @@ async function refresh() {
           <td>${formatNum(m.tokens)}</td>
           <td>${formatCost(m.cost_daily)}</td>
           <td>${formatNum(m.tokens_daily)}</td>
+          <td>${formatPct(m.input_cached_pct)}</td>
         </tr>
       `).join('');
     } else {

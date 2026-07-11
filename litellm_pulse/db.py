@@ -23,7 +23,6 @@ METRIC_KEYS = [
     "cache_misses",
     "cached_tokens",
     "input_cached_tokens",
-    "input_cache_creation_tokens",
 ]
 
 
