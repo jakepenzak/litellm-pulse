@@ -234,7 +234,7 @@ Every tracked metric gets `_daily`, `_weekly`, and `_monthly` suffixes:
 
 | Suffix | Meaning |
 |---|---|
-| _(none)_ | Cumulative total since LiteLLM started (raw counter value) |
+| _(none)_ | All-time total since LiteLLM Pulse started tracking (sum of all deltas). **Bound by the purge window:** only data within `--db-retention-days` (default 90) is retained — older deltas are pruned hourly. |
 | `_daily` | Sum of deltas since start of today (midnight in the configured timezone) |
 | `_weekly` | Sum of deltas since start of this week (Monday in the configured timezone) |
 | `_monthly` | Sum of deltas since start of this month (1st in the configured timezone) |
@@ -327,8 +327,8 @@ Returns `{"status": "ok"}` once the first successful scrape has completed.
 LiteLLM's Prometheus metrics are **counters** — they grow cumulatively and only reset when the LiteLLM process restarts. LiteLLM Pulse handles this as follows:
 
 1. **Each scrape** stores the raw cumulative value and a computed delta (change since the previous scrape).
-2. **Daily/weekly/monthly** values are computed as `SUM(delta)` for all scrapes within the time window.
-3. **Counter reset detection**: If the primary `requests` counter drops by more than 50%, LiteLLM Pulse assumes LiteLLM restarted. The delta for that scrape is set to the current value (treating it as starting from 0), and `is_reset=true` is recorded in the database. This ensures daily/weekly/monthly sums remain correct even across LiteLLM restarts.
+2. **Cumulative** values are the sum of all deltas ever recorded in the database (all-time total). **Daily/weekly/monthly** values are computed as `SUM(delta)` for all scrapes within the time window.
+3. **Counter reset detection**: If the primary `requests` counter drops by more than 50%, LiteLLM Pulse assumes LiteLLM restarted. The delta for that scrape is set to the current value (treating it as starting from 0), and `is_reset=true` is recorded in the database. This ensures all cumulative and window sums remain correct even across LiteLLM restarts.
 
 ## State Recovery
 

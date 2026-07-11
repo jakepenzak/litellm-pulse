@@ -329,7 +329,7 @@ class TestModelsEndpoint:
             response = await async_client.get("/api/v1/models")
             data = response.json()
             gpt4o = next(m for m in data["models"] if m["model"] == "gpt-4o")
-            assert gpt4o["requests"] == 100.0
+            assert gpt4o["requests"] == 10.0
             assert gpt4o["requests_daily"] == 10.0
             assert gpt4o["cost_daily"] == 0.5
         finally:
