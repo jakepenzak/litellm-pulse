@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.3.0](https://github.com/jakepenzak/litellm-pulse/compare/v0.2.2...v0.3.0) (2026-07-11)
+
+
+### ✨ Features
+
+* add additional metrics and per-model usage tracking ([#11](https://github.com/jakepenzak/litellm-pulse/issues/11)) ([d9c87c9](https://github.com/jakepenzak/litellm-pulse/commit/d9c87c96935ae89e35928a4b04fbee8ceae1047d))
+* add cli arguments alongside env variables ([#19](https://github.com/jakepenzak/litellm-pulse/issues/19)) ([a96acb2](https://github.com/jakepenzak/litellm-pulse/commit/a96acb2cf846b4caff3d2ce7a55458b50d0c900d))
+* add input_cached_pct computed metric and remove bogus input_cache_creation_tokens ([#29](https://github.com/jakepenzak/litellm-pulse/issues/29)) ([b582cb7](https://github.com/jakepenzak/litellm-pulse/commit/b582cb757fa1bc22eb3f27b8fc2b6a9a97bf6ac9))
+
+
+### 🐛 Bug Fixes
+
+* extra prometheus model fields leaking through api ([#25](https://github.com/jakepenzak/litellm-pulse/issues/25)) ([7324d96](https://github.com/jakepenzak/litellm-pulse/commit/7324d9688bb9cfe76173ca8b7a6226d2d8e7fbcb))
+* use all-time delta sums for cumulative values, align summary/model_summary sources ([#31](https://github.com/jakepenzak/litellm-pulse/issues/31)) ([6557ea3](https://github.com/jakepenzak/litellm-pulse/commit/6557ea3b2ae82043e317a79cf54c5c2786298c06))
+
+
+### 🔧 CI/CD
+
+* add support for pre-releases ([#20](https://github.com/jakepenzak/litellm-pulse/issues/20)) ([9b9a7a6](https://github.com/jakepenzak/litellm-pulse/commit/9b9a7a667a226bea2180a3f735d34f7f1abe4a3b))
+
+
+### 🛠 Refactoring
+
+* core architecture, project layout, and more comprehensive testing ([#27](https://github.com/jakepenzak/litellm-pulse/issues/27)) ([cf09bd0](https://github.com/jakepenzak/litellm-pulse/commit/cf09bd0d5572d452ce1865df6bfa93f446dddc4c))
+
 ## [0.3.0-dev.4](https://github.com/jakepenzak/litellm-pulse/compare/v0.3.0-dev.3...v0.3.0-dev.4) (2026-07-11)
 
 
