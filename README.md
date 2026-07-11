@@ -451,6 +451,110 @@ sensor:
 
 > **Tip:** To refresh a sensor on demand (outside the polling schedule), call the `homeassistant.update_entity` action targeting the sensor entity.
 
+## Screenshots
+
+<p align="center">
+  <img src="assets/litellm_pulse_dash_screenshot.png" alt="LiteLLM Pulse built-in dashboard" width="700">
+  <br>
+  <em>Built-in dashboard — out-of-the-box view at <code>GET /</code></em>
+</p>
+
+<br>
+
+<p align="center">
+  <img src="assets/litellm_pulse_homepage_screenshot.png" alt="LiteLLM Pulse on Homepage" width="700">
+  <br>
+  <em>Homepage custom API widget showing spend, tokens, and cache stats</em>
+</p>
+
+<details>
+<summary>Homepage `services.yaml` entry</summary>
+
+```yaml
+- LiteLLM Pulse:
+    icon: https://raw.githubusercontent.com/jakepenzak/litellm-pulse/main/assets/litellm-pulse-dark.svg
+    href: https://litellm-pulse.example.com
+    description: LiteLLM monitoring agent.
+    widget:
+      type: customapi
+      url: https://litellm-pulse.example.com/api/v1/metrics
+      refreshInterval: 60000
+      mappings:
+        - field: cost_daily
+          label: Spend Today
+          format: float
+          prefix: "$"
+        - field: cost_monthly
+          label: Spend This Month
+          format: float
+          prefix: "$"
+        - field: tokens_daily
+          label: Tokens Today
+          format: number
+```
+
+</details>
+
+<br>
+
+<p align="center">
+  <img src="assets/litellm_pulse_ha_screenshot.png" alt="LiteLLM Pulse on Home Assistant" width="700">
+  <br>
+  <em>Home Assistant dashboard with mushroom-template cards</em>
+</p>
+
+<details>
+<summary>Home Assistant dashboard YAML</summary>
+
+```yaml
+type: entities
+title: LiteLLM
+show_header_toggle: false
+state_color: false
+header:
+  type: graph
+  entity: sensor.litellm_spend_this_month
+  detail: 2
+entities:
+  - type: custom:mushroom-template-card
+    primary: Spend Today
+    secondary: |
+      ${{ states('sensor.litellm_spend_today') | float | round(2) }}
+    tap_action:
+      action: url
+      url_path: https://litellm.example.com
+  - type: custom:mushroom-template-card
+    primary: Spend This Week
+    secondary: |
+      ${{ states('sensor.litellm_spend_this_week') | float | round(2) }}
+    tap_action:
+      action: url
+      url_path: https://litellm.example.com
+  - type: custom:mushroom-template-card
+    primary: Spend This Month
+    secondary: |
+      ${{ states('sensor.litellm_spend_this_month') | float | round(2) }}
+    tap_action:
+      action: url
+      url_path: https://litellm.example.com
+  - type: custom:mushroom-template-card
+    primary: Requests This Month
+    secondary: |
+      {{ states('sensor.litellm_requests_this_month') | float | round(0) }}
+    tap_action:
+      action: url
+      url_path: https://litellm.example.com
+  - type: custom:mushroom-template-card
+    primary: Tokens This Month
+    secondary: |
+      {{ states('sensor.litellm_tokens_this_month') | float | round(0) }}
+    tap_action:
+      action: url
+      url_path: https://litellm.example.com
+```
+
+</details>
+
 
 ## Contributing
 
