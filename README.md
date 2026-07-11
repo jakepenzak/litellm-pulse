@@ -454,7 +454,7 @@ sensor:
 ## Screenshots
 
 <p align="center">
-  <img src="assets/litellm_pulse_dash_screenshot.png" alt="LiteLLM Pulse built-in dashboard" width="700">
+  <img src="https://raw.githubusercontent.com/jakepenzak/litellm-pulse/main/assets/litellm_pulse_dash_screenshot.png" alt="LiteLLM Pulse built-in dashboard" width="700">
   <br>
   <em>Built-in dashboard — out-of-the-box view at <code>GET /</code></em>
 </p>
@@ -462,7 +462,7 @@ sensor:
 <br>
 
 <p align="center">
-  <img src="assets/litellm_pulse_homepage_screenshot.png" alt="LiteLLM Pulse on Homepage" width="700">
+  <img src="https://raw.githubusercontent.com/jakepenzak/litellm-pulse/main/assets/litellm_pulse_homepage_screenshot.png" alt="LiteLLM Pulse on Homepage" width="700">
   <br>
   <em>Homepage custom API widget showing spend, tokens, and cache stats</em>
 </p>
@@ -498,7 +498,7 @@ sensor:
 <br>
 
 <p align="center">
-  <img src="assets/litellm_pulse_ha_screenshot.png" alt="LiteLLM Pulse on Home Assistant" width="700">
+  <img src="https://raw.githubusercontent.com/jakepenzak/litellm-pulse/main/assets/litellm_pulse_ha_screenshot.png" alt="LiteLLM Pulse on Home Assistant" width="700">
   <br>
   <em>Home Assistant dashboard with mushroom-template cards</em>
 </p>
