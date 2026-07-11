@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0-dev.4](https://github.com/jakepenzak/litellm-pulse/compare/v0.3.0-dev.3...v0.3.0-dev.4) (2026-07-11)
+
+
+### 🐛 Bug Fixes
+
+* use all-time delta sums for cumulative values, align summary/model_summary sources ([#31](https://github.com/jakepenzak/litellm-pulse/issues/31)) ([6557ea3](https://github.com/jakepenzak/litellm-pulse/commit/6557ea3b2ae82043e317a79cf54c5c2786298c06))
+
 ## [0.3.0-dev.3](https://github.com/jakepenzak/litellm-pulse/compare/v0.3.0-dev.2...v0.3.0-dev.3) (2026-07-11)
 
 
