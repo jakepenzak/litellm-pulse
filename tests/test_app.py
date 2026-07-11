@@ -36,7 +36,6 @@ def _make_test_scraper(**overrides) -> Scraper:
         "litellm_cache_misses_metric_total": 60.0,
         "litellm_cached_tokens_metric_total": 15000.0,
         "litellm_input_cached_tokens_metric_total": 8000.0,
-        "litellm_input_cache_creation_tokens_metric_total": 2000.0,
     }
     scraper.raw_model_metrics = {
         "requests": {"gpt-4o": 80.0, "claude-sonnet": 20.0},

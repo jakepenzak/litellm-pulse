@@ -186,7 +186,7 @@ Each tracked metric maps a friendly name to a Prometheus metric name. Override a
 | `LITELLM_PULSE_METRIC_CACHE_MISSES` | `litellm_cache_misses_metric_total` |
 | `LITELLM_PULSE_METRIC_CACHED_TOKENS` | `litellm_cached_tokens_metric_total` |
 | `LITELLM_PULSE_METRIC_INPUT_CACHED_TOKENS` | `litellm_input_cached_tokens_metric_total` |
-| `LITELLM_PULSE_METRIC_INPUT_CACHE_CREATION_TOKENS` | `litellm_input_cache_creation_tokens_metric_total` |
+| `LITELLM_PULSE_METRIC_INPUT_CACHED_PCT` | computed — `input_cached_tokens / input_tokens × 100` |
 
 ## API Endpoints
 
@@ -212,7 +212,7 @@ Returns all tracked metrics as JSON: cumulative totals, daily/weekly/monthly agg
   "cache_misses": 60,
   "cached_tokens": 15000,
   "input_cached_tokens": 8000,
-  "input_cache_creation_tokens": 2000,
+  "input_cached_pct": 2.67,
   "requests_daily": 215,
   "requests_weekly": 1200,
   "requests_monthly": 3400,

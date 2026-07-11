@@ -51,9 +51,6 @@ litellm_cached_tokens_metric_total 15000.0
 # HELP litellm_input_cached_tokens_metric_total Input cached tokens
 # TYPE litellm_input_cached_tokens_metric_total counter
 litellm_input_cached_tokens_metric_total 8000.0
-# HELP litellm_input_cache_creation_tokens_metric_total Input cache creation tokens
-# TYPE litellm_input_cache_creation_tokens_metric_total counter
-litellm_input_cache_creation_tokens_metric_total 2000.0
 # HELP litellm_deployment_total_requests_total Per-model deployment requests
 # TYPE litellm_deployment_total_requests_total counter
 litellm_deployment_total_requests_total{model="gpt-4o"} 80.0

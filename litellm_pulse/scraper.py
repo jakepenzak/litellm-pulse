@@ -311,11 +311,47 @@ class Scraper:
                 data[f"{friendly}_daily"] = daily.get(friendly, 0.0)
                 data[f"{friendly}_weekly"] = weekly.get(friendly, 0.0)
                 data[f"{friendly}_monthly"] = monthly.get(friendly, 0.0)
+
+            input_tokens = self.raw_metrics.get(self.settings.metric_map["input_tokens"], 0.0)
+            input_cached = self.raw_metrics.get(
+                self.settings.metric_map["input_cached_tokens"], 0.0
+            )
+            data["input_cached_pct"] = (
+                (input_cached / input_tokens * 100) if input_tokens > 0 else 0.0
+            )
+
+            data["input_cached_pct_daily"] = (
+                (daily["input_cached_tokens"] / daily["input_tokens"] * 100)
+                if daily["input_tokens"] > 0
+                else 0.0
+            )
+            data["input_cached_pct_weekly"] = (
+                (weekly["input_cached_tokens"] / weekly["input_tokens"] * 100)
+                if weekly["input_tokens"] > 0
+                else 0.0
+            )
+            data["input_cached_pct_monthly"] = (
+                (monthly["input_cached_tokens"] / monthly["input_tokens"] * 100)
+                if monthly["input_tokens"] > 0
+                else 0.0
+            )
         else:
             for friendly in self.settings.metric_map:
                 data[f"{friendly}_daily"] = 0.0
                 data[f"{friendly}_weekly"] = 0.0
                 data[f"{friendly}_monthly"] = 0.0
+
+            input_tokens = self.raw_metrics.get(self.settings.metric_map["input_tokens"], 0.0)
+            input_cached = self.raw_metrics.get(
+                self.settings.metric_map["input_cached_tokens"], 0.0
+            )
+            data["input_cached_pct"] = (
+                (input_cached / input_tokens * 100) if input_tokens > 0 else 0.0
+            )
+
+            data["input_cached_pct_daily"] = 0.0
+            data["input_cached_pct_weekly"] = 0.0
+            data["input_cached_pct_monthly"] = 0.0
 
         data["last_scrape"] = (
             self._format_ts(self.last_scrape.timestamp()) if self.last_scrape else None
@@ -380,6 +416,36 @@ class Scraper:
                 entry[f"{metric}_weekly"] = val
             for metric, val in monthly.get(model, {}).items():
                 entry[f"{metric}_monthly"] = val
+
+            input_tokens = entry.get("input_tokens", 0.0)
+            input_cached = entry.get("input_cached_tokens", 0.0)
+            entry["input_cached_pct"] = (
+                (input_cached / input_tokens * 100) if input_tokens > 0 else 0.0
+            )
+
+            if self.db is not None:
+                daily_it = daily.get(model, {}).get("input_tokens", 0.0)
+                daily_ic = daily.get(model, {}).get("input_cached_tokens", 0.0)
+                entry["input_cached_pct_daily"] = (
+                    (daily_ic / daily_it * 100) if daily_it > 0 else 0.0
+                )
+
+                weekly_it = weekly.get(model, {}).get("input_tokens", 0.0)
+                weekly_ic = weekly.get(model, {}).get("input_cached_tokens", 0.0)
+                entry["input_cached_pct_weekly"] = (
+                    (weekly_ic / weekly_it * 100) if weekly_it > 0 else 0.0
+                )
+
+                monthly_it = monthly.get(model, {}).get("input_tokens", 0.0)
+                monthly_ic = monthly.get(model, {}).get("input_cached_tokens", 0.0)
+                entry["input_cached_pct_monthly"] = (
+                    (monthly_ic / monthly_it * 100) if monthly_it > 0 else 0.0
+                )
+            else:
+                entry["input_cached_pct_daily"] = 0.0
+                entry["input_cached_pct_weekly"] = 0.0
+                entry["input_cached_pct_monthly"] = 0.0
+
             models.append(entry)
 
         return {

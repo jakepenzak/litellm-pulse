@@ -30,7 +30,6 @@ DEFAULT_METRIC_MAP: dict[str, str] = {
     "cache_misses": "litellm_cache_misses_metric_total",
     "cached_tokens": "litellm_cached_tokens_metric_total",
     "input_cached_tokens": "litellm_input_cached_tokens_metric_total",
-    "input_cache_creation_tokens": "litellm_input_cache_creation_tokens_metric_total",
 }
 
 # Per-model tracking: maps Prometheus metric names to friendly names for
