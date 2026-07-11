@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0-dev.3](https://github.com/jakepenzak/litellm-pulse/compare/v0.3.0-dev.2...v0.3.0-dev.3) (2026-07-11)
+
+
+### ✨ Features
+
+* add input_cached_pct computed metric and remove bogus input_cache_creation_tokens ([#29](https://github.com/jakepenzak/litellm-pulse/issues/29)) ([b582cb7](https://github.com/jakepenzak/litellm-pulse/commit/b582cb757fa1bc22eb3f27b8fc2b6a9a97bf6ac9))
+
 ## [0.3.0-dev.2](https://github.com/jakepenzak/litellm-pulse/compare/v0.3.0-dev.1...v0.3.0-dev.2) (2026-06-30)
 
 
