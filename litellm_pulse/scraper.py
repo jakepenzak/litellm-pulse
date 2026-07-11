@@ -300,24 +300,20 @@ class Scraper:
         """Build the flat metrics summary (cumulative + daily/weekly/monthly)."""
         data: dict[str, Any] = {}
 
-        for friendly, prom_name in self.settings.metric_map.items():
-            data[friendly] = self.raw_metrics.get(prom_name, 0.0)
-
         if self.db is not None:
+            all_time = get_window_aggregate(self.db, 0)
             daily = get_window_aggregate(self.db, self._start_of_day())
             weekly = get_window_aggregate(self.db, self._start_of_week())
             monthly = get_window_aggregate(self.db, self._start_of_month())
             for friendly in self.settings.metric_map:
+                data[friendly] = all_time.get(friendly, 0.0)
                 data[f"{friendly}_daily"] = daily.get(friendly, 0.0)
                 data[f"{friendly}_weekly"] = weekly.get(friendly, 0.0)
                 data[f"{friendly}_monthly"] = monthly.get(friendly, 0.0)
-
-            input_tokens = self.raw_metrics.get(self.settings.metric_map["input_tokens"], 0.0)
-            input_cached = self.raw_metrics.get(
-                self.settings.metric_map["input_cached_tokens"], 0.0
-            )
             data["input_cached_pct"] = (
-                (input_cached / input_tokens * 100) if input_tokens > 0 else 0.0
+                (all_time["input_cached_tokens"] / all_time["input_tokens"] * 100)
+                if all_time["input_tokens"] > 0
+                else 0.0
             )
 
             data["input_cached_pct_daily"] = (
@@ -336,6 +332,9 @@ class Scraper:
                 else 0.0
             )
         else:
+            for friendly, prom_name in self.settings.metric_map.items():
+                data[friendly] = self.raw_metrics.get(prom_name, 0.0)
+
             for friendly in self.settings.metric_map:
                 data[f"{friendly}_daily"] = 0.0
                 data[f"{friendly}_weekly"] = 0.0
@@ -376,10 +375,9 @@ class Scraper:
                     ),
                 }
         if name in self.settings.metric_map:
-            prom_name = self.settings.metric_map[name]
             return {
                 "name": name,
-                "value": self.raw_metrics.get(prom_name, 0.0),
+                "value": self.summary().get(name, 0.0),
                 "last_scrape": (
                     self._format_ts(self.last_scrape.timestamp()) if self.last_scrape else None
                 ),
@@ -392,24 +390,29 @@ class Scraper:
     def model_summary(self) -> dict[str, Any]:
         """Build per-model breakdown with cumulative + window aggregates."""
         if self.db is not None:
+            all_time = get_model_window_aggregate(self.db, 0)
             latest_raw = get_latest_model_metrics(self.db)
             daily = get_model_window_aggregate(self.db, self._start_of_day())
             weekly = get_model_window_aggregate(self.db, self._start_of_week())
             monthly = get_model_window_aggregate(self.db, self._start_of_month())
         else:
+            all_time = {}
             latest_raw = self.raw_model_metrics
             daily = weekly = monthly = {}
 
         all_models: set[str] = set()
         for model_map in latest_raw.values():
             all_models.update(model_map.keys())
-        all_models.update(daily.keys(), weekly.keys(), monthly.keys())
+        all_models.update(all_time.keys(), daily.keys(), weekly.keys(), monthly.keys())
 
         models: list[dict[str, Any]] = []
         for model in sorted(all_models):
             entry: dict[str, Any] = {"model": model}
+            for metric, val in all_time.get(model, {}).items():
+                entry[metric] = val
             for metric, model_vals in latest_raw.items():
-                entry[metric] = model_vals.get(model, 0.0)
+                if metric not in entry:
+                    entry[metric] = model_vals.get(model, 0.0)
             for metric, val in daily.get(model, {}).items():
                 entry[f"{metric}_daily"] = val
             for metric, val in weekly.get(model, {}).items():
