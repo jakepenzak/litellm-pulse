@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0-dev.5](https://github.com/jakepenzak/litellm-pulse/compare/v0.3.0-dev.4...v0.3.0-dev.5) (2026-07-11)
+
+
+### 📚 Documentation
+
+* add screenshots section to README ([#34](https://github.com/jakepenzak/litellm-pulse/issues/34)) ([ba0eb04](https://github.com/jakepenzak/litellm-pulse/commit/ba0eb04c18229c4db4349c2cd77d5b2c8913b6d2))
+
 ## [0.3.0](https://github.com/jakepenzak/litellm-pulse/compare/v0.2.2...v0.3.0) (2026-07-11)
 
 
